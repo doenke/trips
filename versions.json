@@ -1,0 +1,8 @@
+{
+  "$comment": "Version x.yy.zzz: x = major (by hand), yy = days with changes since `since` (counted by scripts/version.mjs), zzz = CI run. A new major: raise major, set since to that day (yy starts again).",
+  "app": {
+    "major": 1,
+    "since": "2026-11-17",
+    "paths": ["apps", "scripts", "Dockerfile", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"]
+  }
+}
