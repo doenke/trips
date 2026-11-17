@@ -29,7 +29,10 @@ export function loginErrorCode(err: unknown): string {
   return 'failed';
 }
 
-export async function oidcRoutes(app: FastifyInstance, opts: { config: Config; users: UserService; sessions: Sessions; avatars: AvatarService }): Promise<void> {
+export async function oidcRoutes(
+  app: FastifyInstance,
+  opts: { config: Config; users: UserService; sessions: Sessions; avatars: AvatarService },
+): Promise<void> {
   const { config, users, sessions, avatars } = opts;
   const secure = config.PUBLIC_URL.startsWith('https://');
   const redirectUri = `${config.PUBLIC_URL}/auth/callback`;
@@ -79,7 +82,14 @@ export async function oidcRoutes(app: FastifyInstance, opts: { config: Config; u
       state,
       nonce,
     });
-    reply.setCookie(FLOW_COOKIE, JSON.stringify({ verifier, state, nonce, next }), { path: '/auth', httpOnly: true, sameSite: 'lax', secure, signed: true, maxAge: 600 });
+    reply.setCookie(FLOW_COOKIE, JSON.stringify({ verifier, state, nonce, next }), {
+      path: '/auth',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure,
+      signed: true,
+      maxAge: 600,
+    });
     return reply.redirect(url.href);
   });
 

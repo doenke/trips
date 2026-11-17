@@ -1,0 +1,30 @@
+# cp compose.example.yml compose.yml && cp .env.example .env
+# Port 41873 ist ein Beispiel: vorher auf dem Host prüfen, dass er frei ist (sudo ss -tlnp | grep 41873).
+services:
+  trips:
+    # Feste Version statt latest möglich, z. B. ghcr.io/doenke/trips:1.1.12
+    image: ghcr.io/doenke/trips:latest
+    # Alternativ lokal aus dem Repo bauen (Version zeigt dann "dev"):
+    # build: https://github.com/doenke/trips.git#main
+    # image: trips-trips:latest
+    # labels:
+    #   - com.centurylinklabs.watchtower.enable=false
+    container_name: trips
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Europe/Berlin
+      PORT: 41873
+    ports:
+      - "41873:41873"     # Ziel für den Reverse Proxy: http://<host>:41873
+    volumes:
+      # Datenbank, Anhänge und Profilbilder. Der Container läuft als UID 1000:
+      # sudo mkdir -p /data/container/trips/data && sudo chown 1000:1000 /data/container/trips/data
+      - /data/container/trips/data:/data
+    healthcheck:
+      # /healthz antwortet nur mit 200, wenn Datenbank und Datenverzeichnis passen.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:41873/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

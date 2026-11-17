@@ -6,4 +6,6 @@ export default defineConfig({
   target: 'node22',
   platform: 'node',
   clean: true,
+  // node:sqlite only exists with the prefix – keep "node:" on all built-in imports.
+  removeNodeProtocol: false,
 });

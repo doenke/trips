@@ -1,7 +1,14 @@
 import type { Segment, SegmentType } from './types';
 
 export const TYPE_ICON: Record<SegmentType, string> = { flight: '✈️', train: '🚆', hotel: '🏨', car: '🚗', parking: '🅿️', other: '📌' };
-export const TYPE_LABEL: Record<SegmentType, string> = { flight: 'Flug', train: 'Zug', hotel: 'Hotel', car: 'Mietwagen', parking: 'Parkplatz', other: 'Sonstiges' };
+export const TYPE_LABEL: Record<SegmentType, string> = {
+  flight: 'Flug',
+  train: 'Zug',
+  hotel: 'Hotel',
+  car: 'Mietwagen',
+  parking: 'Parkplatz',
+  other: 'Sonstiges',
+};
 
 const dayFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const dayYearFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });

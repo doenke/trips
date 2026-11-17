@@ -52,7 +52,8 @@ function tripMarkdown(t: TripView): string {
     '## Segmente',
     ...(t.segments.length ? t.segments.map(segmentLine) : ['(noch keine)']),
   ].filter((l): l is string => typeof l === 'string');
-  if (t.attachments.length) lines.push('', '## Anhänge', ...t.attachments.map((a) => `- ${a.filename} (${a.mime}, ${Math.round(a.size / 1024)} KB) [attachment_id: ${a.id}]`));
+  if (t.attachments.length)
+    lines.push('', '## Anhänge', ...t.attachments.map((a) => `- ${a.filename} (${a.mime}, ${Math.round(a.size / 1024)} KB) [attachment_id: ${a.id}]`));
   lines.push('', '## Details (JSON)', '```json', JSON.stringify(t.segments, null, 1), '```');
   return lines.join('\n');
 }
@@ -117,7 +118,8 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
     'create_trip',
     {
       title: 'Reise anlegen',
-      description: 'Legt eine neue Reise an. Ohne traveler_ids bist du der einzige Reisende. Segmente danach mit add_segment oder import_booking_text hinzufügen.',
+      description:
+        'Legt eine neue Reise an. Ohne traveler_ids bist du der einzige Reisende. Segmente danach mit add_segment oder import_booking_text hinzufügen.',
       inputSchema: tripFields,
       annotations: write,
     },
@@ -131,7 +133,8 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
     'update_trip',
     {
       title: 'Reise ändern',
-      description: 'Ändert Titel, Ziel, Datum, Notizen oder Reisende einer Reise. Nur angegebene Felder ändern sich; traveler_ids ersetzt die komplette Liste der Reisenden.',
+      description:
+        'Ändert Titel, Ziel, Datum, Notizen oder Reisende einer Reise. Nur angegebene Felder ändern sich; traveler_ids ersetzt die komplette Liste der Reisenden.',
       inputSchema: { trip_id: z.string(), ...z.object(tripFields).partial().shape },
       annotations: write,
     },
@@ -210,15 +213,26 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
       title: 'Passende Reise finden',
       description: `Findet die Reise, zu der ein Zeitraum gehört – mit derselben Regel wie der Mail-Import: Überschneidung mit ±${s.config.TRIP_MATCH_DAYS} Tagen Karenz, bevorzugt die Reise mit den meisten gemeinsamen Reisenden, dann die nächstgelegene. Nur Reisen, die du ändern darfst.`,
       inputSchema: {
-        start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('YYYY-MM-DD'),
-        end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('YYYY-MM-DD, Standard = start_date'),
+        start_date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe('YYYY-MM-DD'),
+        end_date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe('YYYY-MM-DD, Standard = start_date'),
         traveler_ids: z.array(z.string()).optional().describe('Reisende, Standard = du'),
       },
       annotations: read,
     },
     guard(({ start_date, end_date, traveler_ids }: { start_date: string; end_date?: string; traveler_ids?: string[] }) => {
       const t = s.trips.findTripForDates(actor, start_date, end_date ?? start_date, traveler_ids?.length ? traveler_ids : [actor.userId]);
-      return text(t ? `Passende Reise: ${t.title} (${when(t.start_date)}–${when(t.end_date)}) [trip_id: ${t.id}]` : 'Keine passende Reise gefunden – lege mit create_trip eine neue an.');
+      return text(
+        t
+          ? `Passende Reise: ${t.title} (${when(t.start_date)}–${when(t.end_date)}) [trip_id: ${t.id}]`
+          : 'Keine passende Reise gefunden – lege mit create_trip eine neue an.',
+      );
     }),
   );
 
@@ -248,7 +262,14 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
       inputSchema: {},
       annotations: read,
     },
-    guard(() => text(s.users.list().map((u) => `- ${u.name}${u.id === actor.userId ? ' (du)' : ''} [user_id: ${u.id}]`).join('\n'))),
+    guard(() =>
+      text(
+        s.users
+          .list()
+          .map((u) => `- ${u.name}${u.id === actor.userId ? ' (du)' : ''} [user_id: ${u.id}]`)
+          .join('\n'),
+      ),
+    ),
   );
 
   server.registerTool(
@@ -263,7 +284,16 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
       const a = s.attachments.get(attachment_id);
       return text(
         JSON.stringify(
-          { id: a.id, trip_id: a.trip_id, segment_id: a.segment_id, filename: a.filename, mime: a.mime, size: a.size, created_at: a.created_at, download_url: `${s.config.PUBLIC_URL}/api/attachments/${a.id}` },
+          {
+            id: a.id,
+            trip_id: a.trip_id,
+            segment_id: a.segment_id,
+            filename: a.filename,
+            mime: a.mime,
+            size: a.size,
+            created_at: a.created_at,
+            download_url: `${s.config.PUBLIC_URL}/api/attachments/${a.id}`,
+          },
           null,
           1,
         ),
@@ -276,7 +306,9 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
     'trips://upcoming',
     { title: 'Nächste Reisen', description: 'Kompakte Übersicht der kommenden Reisen', mimeType: 'text/markdown' },
     async (uri) => {
-      const list = s.trips.listTrips(actor, { filter: 'upcoming' }).filter((t) => !t.start_date || t.start_date <= addDays(new Date().toISOString().slice(0, 10), 365));
+      const list = s.trips
+        .listTrips(actor, { filter: 'upcoming' })
+        .filter((t) => !t.start_date || t.start_date <= addDays(new Date().toISOString().slice(0, 10), 365));
       const body = list.length
         ? list.map((t) => `${tripLine(t)}${t.next_segment ? `\n  nächstes: ${segmentLine(t.next_segment).slice(2)}` : ''}`).join('\n')
         : 'Keine kommenden Reisen.';
@@ -288,7 +320,10 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
 }
 
 /** MCP over Streamable HTTP at /mcp (stateless: a fresh server per request). */
-export async function mcpRoutes(app: FastifyInstance, opts: { services: Services; requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void> }): Promise<void> {
+export async function mcpRoutes(
+  app: FastifyInstance,
+  opts: { services: Services; requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void> },
+): Promise<void> {
   app.post('/mcp', { preHandler: opts.requireUser }, async (request, reply) => {
     const p = request.principal!;
     const server = createMcpServer(opts.services, p.actor, p.tokenName ?? 'Sitzung');
@@ -303,8 +338,10 @@ export async function mcpRoutes(app: FastifyInstance, opts: { services: Services
   });
 
   const notAllowed = async (_request: FastifyRequest, reply: FastifyReply) =>
-    reply.code(405).header('Allow', 'POST').send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed' }, id: null });
+    reply
+      .code(405)
+      .header('Allow', 'POST')
+      .send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed' }, id: null });
   app.get('/mcp', notAllowed);
   app.delete('/mcp', notAllowed);
 }
-

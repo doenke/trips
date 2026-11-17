@@ -27,7 +27,10 @@ async function readMultipart(request: FastifyRequest): Promise<{ fields: Record<
   return { fields, files };
 }
 
-export async function apiRoutes(app: FastifyInstance, opts: { services: Services; requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void> }): Promise<void> {
+export async function apiRoutes(
+  app: FastifyInstance,
+  opts: { services: Services; requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void> },
+): Promise<void> {
   const s = opts.services;
   const { config } = s;
   const actorOf = (request: FastifyRequest) => request.principal!.actor;
@@ -79,7 +82,7 @@ export async function apiRoutes(app: FastifyInstance, opts: { services: Services
 
     api.put('/api/me/airtrail', async (request) => {
       sessionOnly(request);
-      const { key } = z.object({ key: z.string().trim().min(4, "API-Key fehlt").max(500) }).parse(request.body);
+      const { key } = z.object({ key: z.string().trim().min(4, 'API-Key fehlt').max(500) }).parse(request.body);
       const client = s.airtrail.client;
       if (!client) throw new AppError(503, 'airtrail_disabled', 'AirTrail ist nicht eingerichtet (AIRTRAIL_URL fehlt).');
       let me: { id: string; name: string };
@@ -141,7 +144,15 @@ export async function apiRoutes(app: FastifyInstance, opts: { services: Services
     });
 
     api.get('/api/trips/find', async (request) => {
-      const q = z.object({ start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).parse(request.query);
+      const q = z
+        .object({
+          start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          end: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+        })
+        .parse(request.query);
       return { trip: s.trips.findTripForDates(actorOf(request), q.start, q.end ?? q.start) };
     });
 
@@ -191,8 +202,12 @@ export async function apiRoutes(app: FastifyInstance, opts: { services: Services
       const tripId = Id.parse(request.params).id;
       const m = await readMultipart(request);
       if (!m.files.length) throw badRequest('Keine Datei ausgewählt.');
-      const rows = m.files.map((f) => s.attachments.add(actorOf(request), tripId, { filename: f.filename, data: f.data, segmentId: m.fields.segment_id || null }));
-      return reply.code(201).send(rows.map((a) => ({ id: a.id, filename: a.filename, mime: a.mime, size: a.size, segment_id: a.segment_id, url: `/api/attachments/${a.id}` })));
+      const rows = m.files.map((f) =>
+        s.attachments.add(actorOf(request), tripId, { filename: f.filename, data: f.data, segmentId: m.fields.segment_id || null }),
+      );
+      return reply
+        .code(201)
+        .send(rows.map((a) => ({ id: a.id, filename: a.filename, mime: a.mime, size: a.size, segment_id: a.segment_id, url: `/api/attachments/${a.id}` })));
     });
 
     api.get('/api/attachments/:id', async (request, reply) => {
@@ -203,7 +218,10 @@ export async function apiRoutes(app: FastifyInstance, opts: { services: Services
         .type(a.mime)
         .header('Cache-Control', 'private, max-age=86400')
         .header('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${name}`)
-        .header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; object-src 'self'; plugin-types application/pdf")
+        .header(
+          'Content-Security-Policy',
+          "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; object-src 'self'; plugin-types application/pdf",
+        )
         .send(createReadStream(s.attachments.path(a.id)));
     });
 
@@ -215,7 +233,9 @@ export async function apiRoutes(app: FastifyInstance, opts: { services: Services
     // ---- export / admin --------------------------------------------------------------------
 
     api.get('/api/export', async (request, reply) =>
-      reply.header('Content-Disposition', `attachment; filename="trips-export-${new Date().toISOString().slice(0, 10)}.json"`).send(s.exchange.export(actorOf(request))),
+      reply
+        .header('Content-Disposition', `attachment; filename="trips-export-${new Date().toISOString().slice(0, 10)}.json"`)
+        .send(s.exchange.export(actorOf(request))),
     );
 
     api.get('/api/admin/mail-log', async (request) => {

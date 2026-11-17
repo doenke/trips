@@ -79,7 +79,12 @@ export async function buildApp(config: Config, deps: Deps = {}): Promise<{ app: 
   const trips = new TripService(db, { graceDays: config.TRIP_MATCH_DAYS, timeZone: process.env.TZ || 'Europe/Berlin' });
   const filesDir = config.DATA_DIR === ':memory:' ? join(process.cwd(), '.test-data') : dataDir;
   const attachments = new AttachmentService(db, trips, filesDir);
-  const extractor = deps.extractor !== undefined ? deps.extractor : config.ANTHROPIC_API_KEY ? claudeExtractor({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL }) : null;
+  const extractor =
+    deps.extractor !== undefined
+      ? deps.extractor
+      : config.ANTHROPIC_API_KEY
+        ? claudeExtractor({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL })
+        : null;
   const booking = new BookingService(trips, users, attachments, extractor, { publicUrl: config.PUBLIC_URL, timeZone: process.env.TZ || 'Europe/Berlin' });
   const airtrail = createAirTrail(config.AIRTRAIL_URL, trips, users, app.log, deps.fetch);
   trips.hooks = airtrail;
@@ -219,7 +224,12 @@ export async function buildApp(config: Config, deps: Deps = {}): Promise<{ app: 
   app.setNotFoundHandler((request, reply) => {
     // App routes (/trips/…, /settings) get the shell; missing files (with an extension) stay 404.
     const path = request.url.split('?')[0]!;
-    if (request.method === 'GET' && !/^\/(api|auth|oauth|mcp|ics|avatar|healthz)/.test(path) && !/\.[a-z0-9]+$/i.test(path) && existsSync(join(webDist, 'index.html'))) {
+    if (
+      request.method === 'GET' &&
+      !/^\/(api|auth|oauth|mcp|ics|avatar|healthz)/.test(path) &&
+      !/\.[a-z0-9]+$/i.test(path) &&
+      existsSync(join(webDist, 'index.html'))
+    ) {
       return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
     }
     return reply.code(404).send({ error: 'not_found', message: 'Nicht gefunden' });

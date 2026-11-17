@@ -52,7 +52,11 @@ function formatter(tz: string): Intl.DateTimeFormat {
 
 /** Offset of a zone at an instant, in minutes east of UTC (e.g. +120 for CEST). */
 export function zoneOffsetMinutes(instant: Date, tz: string): number {
-  const parts = Object.fromEntries(formatter(tz).formatToParts(instant).map((p) => [p.type, p.value]));
+  const parts = Object.fromEntries(
+    formatter(tz)
+      .formatToParts(instant)
+      .map((p) => [p.type, p.value]),
+  );
   const asUtc = Date.UTC(+parts.year!, +parts.month! - 1, +parts.day!, +parts.hour!, +parts.minute!, +parts.second!);
   return Math.round((asUtc - Math.floor(instant.getTime() / 1000) * 1000) / 60_000);
 }
@@ -95,7 +99,11 @@ export function localToIsoOffset(local: string, tz: string | null | undefined): 
 
 /** Today in a zone as YYYY-MM-DD. */
 export function todayIn(tz: string, now = new Date()): string {
-  const parts = Object.fromEntries(formatter(tz).formatToParts(now).map((p) => [p.type, p.value]));
+  const parts = Object.fromEntries(
+    formatter(tz)
+      .formatToParts(now)
+      .map((p) => [p.type, p.value]),
+  );
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 

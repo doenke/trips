@@ -33,7 +33,8 @@ export class FakeAirTrail {
     this.calls.push({ method, path: url.pathname + url.search, body });
     const auth = new Headers(init?.headers).get('authorization')?.replace('Bearer ', '') ?? '';
     const user = this.users[auth];
-    const json = (status: number, data?: unknown) => new Response(data === undefined ? null : JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+    const json = (status: number, data?: unknown) =>
+      new Response(data === undefined ? null : JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
     if (!user) return json(401, { message: 'Unauthorized' });
     const p = url.pathname;
     if (p === '/api/v1/me') return json(200, { data: { id: user.id, username: user.username } });
@@ -93,7 +94,11 @@ export async function createTestApp(opts: { env?: Record<string, string>; extrac
 
   /** Logs in through DEV_LOGIN; returns the session cookie and the user. */
   const login = async (name: string, o: { admin?: boolean; email?: string } = {}) => {
-    const res = await app.inject({ method: 'POST', url: '/auth/dev', payload: { name, admin: !!o.admin, email: o.email ?? `${name.toLowerCase()}@example.org` } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/dev',
+      payload: { name, admin: !!o.admin, email: o.email ?? `${name.toLowerCase()}@example.org` },
+    });
     if (res.statusCode !== 200) throw new Error(`login failed: ${res.body}`);
     const setCookie = res.headers['set-cookie'];
     const raw = Array.isArray(setCookie) ? setCookie[0]! : setCookie!;

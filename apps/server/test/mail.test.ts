@@ -12,8 +12,28 @@ const flightBooking: Extraction = {
   destination: 'Palma',
   passengers: ['JACOBS/SOENKE MR', 'JACOBS/ULLI MRS'],
   segments: [
-    seg({ type: 'flight', number: 'EW 9580', from_code: 'DUS', to_code: 'PMI', start_local: '2027-07-04T07:10', start_tz: 'Europe/Berlin', end_local: '2027-07-04T09:30', end_tz: 'Europe/Madrid', booking_ref: 'X7Q2PL' }),
-    seg({ type: 'flight', number: 'EW 9581', from_code: 'PMI', to_code: 'DUS', start_local: '2027-07-14T10:15', start_tz: 'Europe/Madrid', end_local: '2027-07-14T12:40', end_tz: 'Europe/Berlin', booking_ref: 'X7Q2PL' }),
+    seg({
+      type: 'flight',
+      number: 'EW 9580',
+      from_code: 'DUS',
+      to_code: 'PMI',
+      start_local: '2027-07-04T07:10',
+      start_tz: 'Europe/Berlin',
+      end_local: '2027-07-04T09:30',
+      end_tz: 'Europe/Madrid',
+      booking_ref: 'X7Q2PL',
+    }),
+    seg({
+      type: 'flight',
+      number: 'EW 9581',
+      from_code: 'PMI',
+      to_code: 'DUS',
+      start_local: '2027-07-14T10:15',
+      start_tz: 'Europe/Madrid',
+      end_local: '2027-07-14T12:40',
+      end_tz: 'Europe/Berlin',
+      booking_ref: 'X7Q2PL',
+    }),
   ],
 };
 
@@ -49,7 +69,8 @@ beforeAll(async () => {
 });
 afterAll(async () => t?.close());
 
-const tripsOf = async (who: { headers: Record<string, string> }) => (await t.app.inject({ method: 'GET', url: '/api/trips?mine=true', headers: who.headers })).json();
+const tripsOf = async (who: { headers: Record<string, string> }) =>
+  (await t.app.inject({ method: 'GET', url: '/api/trips?mine=true', headers: who.headers })).json();
 
 describe('alternative sender addresses', () => {
   it('adds, refuses collisions and removes', async () => {
@@ -79,7 +100,9 @@ describe('mail import', () => {
   });
 
   it('rejects mail that failed DMARC', async () => {
-    expect(await t.services.mail.process(mail('soenke@example.org', { authResults: 'spf=fail; dkim=none; dmarc=fail header.from=example.org' }))).toBe('rejected');
+    expect(await t.services.mail.process(mail('soenke@example.org', { authResults: 'spf=fail; dkim=none; dmarc=fail header.from=example.org' }))).toBe(
+      'rejected',
+    );
   });
 
   it('creates a trip from the alternative address, adds the other passenger and mails a summary', async () => {
@@ -134,7 +157,11 @@ describe('mail import', () => {
     const [trip] = await tripsOf(soenke);
     const full = (await t.app.inject({ method: 'GET', url: `/api/trips/${trip.id}`, headers: soenke.headers })).json();
     expect(full.segments).toHaveLength(3);
-    expect(full.segments.find((s: { number: string }) => s.number === 'EW 9580')).toMatchObject({ start_local: '2027-07-04T08:00', seat: '12A, 12B', booking_ref: 'X7Q2PL' });
+    expect(full.segments.find((s: { number: string }) => s.number === 'EW 9580')).toMatchObject({
+      start_local: '2027-07-04T08:00',
+      seat: '12A, 12B',
+      booking_ref: 'X7Q2PL',
+    });
     expect(full.segments.find((s: { type: string }) => s.type === 'parking')).toMatchObject({ end_local: '2027-07-15T10:00', title: 'Holiday Parking' });
     expect(full.end_date).toBe('2027-07-15');
   });
@@ -176,20 +203,39 @@ describe('mail import', () => {
 
 describe('"Buchung einfügen" in the app', () => {
   it('puts the segments straight into the chosen trip', async () => {
-    const trip = (await t.app.inject({ method: 'POST', url: '/api/trips', headers: ulli.headers, payload: { title: 'Berlin', start_date: '2027-03-01', end_date: '2027-03-03' } })).json();
+    const trip = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/trips',
+        headers: ulli.headers,
+        payload: { title: 'Berlin', start_date: '2027-03-01', end_date: '2027-03-03' },
+      })
+    ).json();
     t.setExtraction({
       is_booking: true,
       trip_title: 'Ganz anderer Titel',
       destination: null,
       passengers: [],
-      segments: [seg({ type: 'train', number: 'ICE 123', from_name: 'Köln Hbf', to_name: 'Berlin Hbf', start_local: '2027-03-01T08:00', start_tz: 'Europe/Berlin' })],
+      segments: [
+        seg({ type: 'train', number: 'ICE 123', from_name: 'Köln Hbf', to_name: 'Berlin Hbf', start_local: '2027-03-01T08:00', start_tz: 'Europe/Berlin' }),
+      ],
     });
-    const res = await t.app.inject({ method: 'POST', url: `/api/trips/${trip.id}/import`, headers: ulli.headers, payload: { text: 'Ihre Fahrkarte ICE 123 Köln – Berlin am 1.3.' } });
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/api/trips/${trip.id}/import`,
+      headers: ulli.headers,
+      payload: { text: 'Ihre Fahrkarte ICE 123 Köln – Berlin am 1.3.' },
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ status: 'imported', trip: { id: trip.id, title: 'Berlin' } });
     expect(res.json().summary).toContain('ICE 123 Köln Hbf → Berlin Hbf');
     // Not allowed in someone else's trip.
-    const other = await t.app.inject({ method: 'POST', url: `/api/trips/${trip.id}/import`, headers: soenke.headers, payload: { text: 'Ihre Fahrkarte ICE 123 Köln – Berlin am 1.3.' } });
+    const other = await t.app.inject({
+      method: 'POST',
+      url: `/api/trips/${trip.id}/import`,
+      headers: soenke.headers,
+      payload: { text: 'Ihre Fahrkarte ICE 123 Köln – Berlin am 1.3.' },
+    });
     expect(other.statusCode).toBe(403);
   });
 });

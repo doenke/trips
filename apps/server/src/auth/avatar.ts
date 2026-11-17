@@ -26,7 +26,12 @@ export class AvatarService {
   ) {
     this.dir = join(dataDir, 'avatars');
     mkdirSync(this.dir, { recursive: true });
-    this.hosts = new Set((opts.extraHosts ?? '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean));
+    this.hosts = new Set(
+      (opts.extraHosts ?? '')
+        .split(',')
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean),
+    );
     if (opts.issuer) {
       try {
         this.hosts.add(new URL(opts.issuer).hostname.toLowerCase());

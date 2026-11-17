@@ -20,7 +20,8 @@ const flight = {
   booking_ref: 'ABC123',
 };
 
-const segment = async () => (await t.app.inject({ method: 'GET', url: `/api/trips/${tripId}`, headers: anna.headers })).json().segments.find((s: { id: string }) => s.id === flightId);
+const segment = async () =>
+  (await t.app.inject({ method: 'GET', url: `/api/trips/${tripId}`, headers: anna.headers })).json().segments.find((s: { id: string }) => s.id === flightId);
 const ids = () => JSON.parse(t.services.trips.rawSegment(flightId)!.airtrail_ids) as Record<string, string>;
 
 beforeAll(async () => {
@@ -121,7 +122,9 @@ describe('AirTrail sync', () => {
     const res = await t.app.inject({ method: 'POST', url: `/api/trips/${tripId}/segments`, headers: anna.headers, payload: { ...flight, to_code: 'XXX' } });
     expect(res.statusCode).toBe(201);
     await t.idle();
-    const s = (await t.app.inject({ method: 'GET', url: `/api/trips/${tripId}`, headers: anna.headers })).json().segments.find((x: { id: string }) => x.id === res.json().id);
+    const s = (await t.app.inject({ method: 'GET', url: `/api/trips/${tripId}`, headers: anna.headers }))
+      .json()
+      .segments.find((x: { id: string }) => x.id === res.json().id);
     expect(s.airtrail.error).toContain('Flughafen XXX ist AirTrail unbekannt');
     await t.app.inject({ method: 'DELETE', url: `/api/segments/${res.json().id}`, headers: anna.headers });
   });
@@ -130,7 +133,10 @@ describe('AirTrail sync', () => {
     const before = t.airtrail.count('POST');
     const { token } = (await t.app.inject({ method: 'POST', url: '/api/tokens', headers: anna.headers, payload: { name: 'Claude' } })).json();
     const client = await t.mcp(token);
-    const r = await client.callTool({ name: 'add_segment', arguments: { trip_id: tripId, ...flight, from_code: 'JFK', start_tz: 'America/New_York', end_tz: 'America/New_York' } });
+    const r = await client.callTool({
+      name: 'add_segment',
+      arguments: { trip_id: tripId, ...flight, from_code: 'JFK', start_tz: 'America/New_York', end_tz: 'America/New_York' },
+    });
     expect(r.isError).toBeFalsy();
     expect(textOf(r)).toContain('LH 2010 JFK → MUC');
     await client.close();

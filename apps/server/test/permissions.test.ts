@@ -13,14 +13,26 @@ beforeAll(async () => {
   anna = await t.login('Anna');
   ben = await t.login('Ben');
   admin = await t.login('Chef', { admin: true });
-  const trip = await t.app.inject({ method: 'POST', url: '/api/trips', headers: anna.headers, payload: { title: 'Lissabon', start_date: '2026-12-01', end_date: '2026-12-05' } });
+  const trip = await t.app.inject({
+    method: 'POST',
+    url: '/api/trips',
+    headers: anna.headers,
+    payload: { title: 'Lissabon', start_date: '2026-12-01', end_date: '2026-12-05' },
+  });
   expect(trip.statusCode).toBe(201);
   tripId = trip.json().id;
   const s = await t.app.inject({
     method: 'POST',
     url: `/api/trips/${tripId}/segments`,
     headers: anna.headers,
-    payload: { type: 'hotel', title: 'Casa Azul', start_local: '2026-12-01T15:00', start_tz: 'Europe/Lisbon', end_local: '2026-12-05T11:00', end_tz: 'Europe/Lisbon' },
+    payload: {
+      type: 'hotel',
+      title: 'Casa Azul',
+      start_local: '2026-12-01T15:00',
+      start_tz: 'Europe/Lisbon',
+      end_local: '2026-12-05T11:00',
+      end_tz: 'Europe/Lisbon',
+    },
   });
   expect(s.statusCode).toBe(201);
   segmentId = s.json().id;
@@ -48,7 +60,9 @@ describe('REST permissions', () => {
     const patch = await t.app.inject({ method: 'PATCH', url: `/api/trips/${tripId}`, headers: ben.headers, payload: { title: 'Gekapert' } });
     expect(patch.statusCode).toBe(403);
     expect((await t.app.inject({ method: 'DELETE', url: `/api/trips/${tripId}`, headers: ben.headers })).statusCode).toBe(403);
-    expect((await t.app.inject({ method: 'POST', url: `/api/trips/${tripId}/segments`, headers: ben.headers, payload: { type: 'other', title: 'x' } })).statusCode).toBe(403);
+    expect(
+      (await t.app.inject({ method: 'POST', url: `/api/trips/${tripId}/segments`, headers: ben.headers, payload: { type: 'other', title: 'x' } })).statusCode,
+    ).toBe(403);
     expect((await t.app.inject({ method: 'PATCH', url: `/api/segments/${segmentId}`, headers: ben.headers, payload: { title: 'x' } })).statusCode).toBe(403);
     expect((await t.app.inject({ method: 'DELETE', url: `/api/segments/${segmentId}`, headers: ben.headers })).statusCode).toBe(403);
     // Adding yourself as traveler is a change too.
@@ -80,7 +94,14 @@ describe('REST permissions', () => {
       method: 'POST',
       url: `/api/trips/${tripId}/segments`,
       headers: anna.headers,
-      payload: { type: 'parking', carrier: 'Holiday Parking DUS P7', start_local: '2026-11-30T05:30', start_tz: 'Europe/Berlin', end_local: '2026-12-06T22:00', end_tz: 'Europe/Berlin' },
+      payload: {
+        type: 'parking',
+        carrier: 'Holiday Parking DUS P7',
+        start_local: '2026-11-30T05:30',
+        start_tz: 'Europe/Berlin',
+        end_local: '2026-12-06T22:00',
+        end_tz: 'Europe/Berlin',
+      },
     });
     expect(s.json().title).toBe('Holiday Parking DUS P7');
     const trip = (await t.app.inject({ method: 'GET', url: `/api/trips/${tripId}`, headers: anna.headers })).json();
@@ -88,7 +109,12 @@ describe('REST permissions', () => {
   });
 
   it('validates input in German', async () => {
-    const res = await t.app.inject({ method: 'POST', url: `/api/trips/${tripId}/segments`, headers: anna.headers, payload: { type: 'flight', start_local: '1.12.2026' } });
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/api/trips/${tripId}/segments`,
+      headers: anna.headers,
+      payload: { type: 'flight', start_local: '1.12.2026' },
+    });
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toContain('YYYY-MM-DD');
   });

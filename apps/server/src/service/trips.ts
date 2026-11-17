@@ -213,14 +213,26 @@ export class TripService {
   }
 
   attachments(tripId: string): AttachmentView[] {
-    return this.db
-      .all<AttachmentRow>('SELECT * FROM attachments WHERE trip_id = ? ORDER BY created_at', tripId)
-      .map((a) => ({ id: a.id, segment_id: a.segment_id, filename: a.filename, mime: a.mime, size: a.size, url: `/api/attachments/${a.id}`, created_at: a.created_at }));
+    return this.db.all<AttachmentRow>('SELECT * FROM attachments WHERE trip_id = ? ORDER BY created_at', tripId).map((a) => ({
+      id: a.id,
+      segment_id: a.segment_id,
+      filename: a.filename,
+      mime: a.mime,
+      size: a.size,
+      url: `/api/attachments/${a.id}`,
+      created_at: a.created_at,
+    }));
   }
 
   getTrip(actor: Actor, tripId: string): TripView {
     const t = this.requireTrip(tripId);
-    return { ...t, travelers: this.travelers(tripId), can_edit: this.canEdit(actor, tripId), segments: this.segments(tripId), attachments: this.attachments(tripId) };
+    return {
+      ...t,
+      travelers: this.travelers(tripId),
+      can_edit: this.canEdit(actor, tripId),
+      segments: this.segments(tripId),
+      attachments: this.attachments(tripId),
+    };
   }
 
   /** upcoming = not over yet (end today or later), past = over. Sorted by start; past ones newest first. */
@@ -357,7 +369,11 @@ export class TripService {
   extendDates(tripId: string): void {
     const t = this.requireTrip(tripId);
     const dates = this.db
-      .all<{ d: string | null }>('SELECT substr(start_local, 1, 10) AS d FROM segments WHERE trip_id = ? UNION ALL SELECT substr(end_local, 1, 10) FROM segments WHERE trip_id = ?', tripId, tripId)
+      .all<{ d: string | null }>(
+        'SELECT substr(start_local, 1, 10) AS d FROM segments WHERE trip_id = ? UNION ALL SELECT substr(end_local, 1, 10) FROM segments WHERE trip_id = ?',
+        tripId,
+        tripId,
+      )
       .map((r) => r.d)
       .filter((d): d is string => !!d)
       .sort();

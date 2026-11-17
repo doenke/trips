@@ -40,15 +40,52 @@ const trip: TripView = {
   can_edit: true,
   attachments: [],
   segments: [
-    segmentView({ ...base, id: 's1', type: 'flight', title: 'LH 400 FRA → JFK', number: 'LH 400', from_code: 'FRA', to_code: 'JFK', start_local: '2027-03-27T10:00', start_tz: 'Europe/Berlin', end_local: '2027-03-27T12:45', end_tz: 'America/New_York' }),
-    segmentView({ ...base, id: 's2', type: 'hotel', title: 'Pod Hotel; Times Square', address: '400 W 42nd St, New York', start_local: '2027-03-27T15:00', start_tz: 'America/New_York', end_local: '2027-04-02T11:00', end_tz: 'America/New_York', booking_ref: 'H-77' }),
-    segmentView({ ...base, id: 's3', type: 'parking', title: 'Holiday Parking FRA', address: 'Cargo City Süd, Frankfurt', start_local: '2027-03-27T07:00', start_tz: 'Europe/Berlin', end_local: '2027-04-03T09:00', end_tz: 'Europe/Berlin', seat: 'P3' }),
+    segmentView({
+      ...base,
+      id: 's1',
+      type: 'flight',
+      title: 'LH 400 FRA → JFK',
+      number: 'LH 400',
+      from_code: 'FRA',
+      to_code: 'JFK',
+      start_local: '2027-03-27T10:00',
+      start_tz: 'Europe/Berlin',
+      end_local: '2027-03-27T12:45',
+      end_tz: 'America/New_York',
+    }),
+    segmentView({
+      ...base,
+      id: 's2',
+      type: 'hotel',
+      title: 'Pod Hotel; Times Square',
+      address: '400 W 42nd St, New York',
+      start_local: '2027-03-27T15:00',
+      start_tz: 'America/New_York',
+      end_local: '2027-04-02T11:00',
+      end_tz: 'America/New_York',
+      booking_ref: 'H-77',
+    }),
+    segmentView({
+      ...base,
+      id: 's3',
+      type: 'parking',
+      title: 'Holiday Parking FRA',
+      address: 'Cargo City Süd, Frankfurt',
+      start_local: '2027-03-27T07:00',
+      start_tz: 'Europe/Berlin',
+      end_local: '2027-04-03T09:00',
+      end_tz: 'Europe/Berlin',
+      seat: 'P3',
+    }),
   ],
 };
 
 describe('ICS', () => {
   const ics = buildIcs([trip], { publicUrl: 'https://trips.example.org', now: new Date('2026-11-17T10:00:00Z') });
-  const events = ics.split('BEGIN:VEVENT').slice(1).map((e) => e.replace(/\r\n /g, ''));
+  const events = ics
+    .split('BEGIN:VEVENT')
+    .slice(1)
+    .map((e) => e.replace(/\r\n /g, ''));
   const find = (summary: string) => events.find((e) => e.includes(`SUMMARY:${summary}`))!;
 
   it('has an all-day event per trip', () => {
@@ -146,12 +183,28 @@ describe('health and export', () => {
   it('exports all readable trips and imports them back (admin)', async () => {
     const anna = await t.login('Anna');
     const admin = await t.login('Chef', { admin: true });
-    const trip = (await t.app.inject({ method: 'POST', url: '/api/trips', headers: anna.headers, payload: { title: 'Rom', start_date: '2027-04-01', end_date: '2027-04-05' } })).json();
-    await t.app.inject({ method: 'POST', url: `/api/trips/${trip.id}/segments`, headers: anna.headers, payload: { type: 'hotel', title: 'Hotel Roma', start_local: '2027-04-01', end_local: '2027-04-05' } });
+    const trip = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/trips',
+        headers: anna.headers,
+        payload: { title: 'Rom', start_date: '2027-04-01', end_date: '2027-04-05' },
+      })
+    ).json();
+    await t.app.inject({
+      method: 'POST',
+      url: `/api/trips/${trip.id}/segments`,
+      headers: anna.headers,
+      payload: { type: 'hotel', title: 'Hotel Roma', start_local: '2027-04-01', end_local: '2027-04-05' },
+    });
     const exp = await t.app.inject({ method: 'GET', url: '/api/export', headers: admin.headers });
     expect(exp.headers['content-disposition']).toContain('trips-export-');
     const data = exp.json();
-    expect(data).toMatchObject({ format: 'trips-export', version: 1, trips: [{ title: 'Rom', travelers: [{ name: 'Anna' }], segments: [{ type: 'hotel', title: 'Hotel Roma' }] }] });
+    expect(data).toMatchObject({
+      format: 'trips-export',
+      version: 1,
+      trips: [{ title: 'Rom', travelers: [{ name: 'Anna' }], segments: [{ type: 'hotel', title: 'Hotel Roma' }] }],
+    });
 
     // Same file again: skipped. Renamed: imported for Anna.
     const again = (await t.app.inject({ method: 'POST', url: '/api/admin/import', headers: admin.headers, payload: data })).json();

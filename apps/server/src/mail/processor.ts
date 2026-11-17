@@ -134,13 +134,22 @@ export class MailProcessor {
     } catch (err) {
       const message = (err as Error).message;
       this.log.warn({ err: message, sender }, 'Mail-Import fehlgeschlagen');
-      await this.reply(mail, sender!, 'Trips: Buchung konnte nicht übernommen werden', `Beim Übernehmen deiner Mail „${subject ?? ''}“ ist etwas schiefgegangen:\n\n${message}\n\nDu kannst die Buchung in der App auch mit „Buchung einfügen“ übernehmen.\n${this.opts.publicUrl}`);
+      await this.reply(
+        mail,
+        sender!,
+        'Trips: Buchung konnte nicht übernommen werden',
+        `Beim Übernehmen deiner Mail „${subject ?? ''}“ ist etwas schiefgegangen:\n\n${message}\n\nDu kannst die Buchung in der App auch mit „Buchung einfügen“ übernehmen.\n${this.opts.publicUrl}`,
+      );
       return finish('error', message, null, owner.id);
     }
 
     const summary = summarize(result);
     const status: ProcessStatus = result.status;
-    const counts = [result.created.length && `${result.created.length} neu`, result.updated.length && `${result.updated.length} aktualisiert`, result.deleted.length && `${result.deleted.length} gelöscht`]
+    const counts = [
+      result.created.length && `${result.created.length} neu`,
+      result.updated.length && `${result.updated.length} aktualisiert`,
+      result.deleted.length && `${result.deleted.length} gelöscht`,
+    ]
       .filter(Boolean)
       .join(', ');
     const mailSubject =

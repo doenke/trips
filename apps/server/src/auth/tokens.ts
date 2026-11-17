@@ -75,7 +75,11 @@ export class Tokens {
     const now = Date.now();
     const values = [sha256hex(access), access.slice(0, 10), sha256hex(refresh), now + ACCESS_TTL_S * 1000, now + REFRESH_TTL_DAYS * 86_400_000] as const;
     if (p.replaceId) {
-      this.db.run('UPDATE api_tokens SET token_hash = ?, prefix = ?, refresh_hash = ?, expires_at = ?, refresh_expires_at = ? WHERE id = ?', ...values, p.replaceId);
+      this.db.run(
+        'UPDATE api_tokens SET token_hash = ?, prefix = ?, refresh_hash = ?, expires_at = ?, refresh_expires_at = ? WHERE id = ?',
+        ...values,
+        p.replaceId,
+      );
     } else {
       this.db.run(
         'INSERT INTO api_tokens (id, user_id, kind, name, client_id, token_hash, prefix, refresh_hash, expires_at, refresh_expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',

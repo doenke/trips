@@ -47,7 +47,9 @@ describe('avatars', () => {
     expect(avatars.allowed('https://evil.example/pic.png')).toBe(false);
     const anna = await t.login('Bea');
     const sharp = (await import('sharp')).default;
-    const png = await sharp({ create: { width: 300, height: 200, channels: 3, background: '#3366aa' } }).png().toBuffer();
+    const png = await sharp({ create: { width: 300, height: 200, channels: 3, background: '#3366aa' } })
+      .png()
+      .toBuffer();
     const original = globalThis.fetch;
     const fetchImpl = (async () => new Response(png, { status: 200, headers: { 'content-type': 'image/png' } })) as typeof fetch;
     (avatars as unknown as { fetchImpl: typeof fetch }).fetchImpl = fetchImpl;

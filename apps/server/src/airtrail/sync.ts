@@ -155,6 +155,12 @@ export class AirTrailSync implements TripHooks {
   }
 }
 
-export function createAirTrail(url: string | undefined, trips: TripService, users: UserService, log: FastifyBaseLogger, fetchImpl?: typeof fetch): AirTrailSync {
+export function createAirTrail(
+  url: string | undefined,
+  trips: TripService,
+  users: UserService,
+  log: FastifyBaseLogger,
+  fetchImpl?: typeof fetch,
+): AirTrailSync {
   return new AirTrailSync(url ? new AirTrailClient(url, fetchImpl) : null, trips, users, log);
 }

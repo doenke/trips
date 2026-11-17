@@ -99,7 +99,11 @@ export class BookingService {
     // Which trip: given one, a matching one (±grace days, most shared travelers), or a new one.
     let tripId = opts.tripId ?? null;
     if (tripId && !this.trips.canEdit(actor, tripId)) throw forbidden();
-    const dates = active.flatMap((s) => [s.input!.start_local, s.input!.end_local]).filter((d): d is string => !!d).map((d) => d.slice(0, 10)).sort();
+    const dates = active
+      .flatMap((s) => [s.input!.start_local, s.input!.end_local])
+      .filter((d): d is string => !!d)
+      .map((d) => d.slice(0, 10))
+      .sort();
     if (!tripId && dates.length) tripId = this.trips.findTripForDates(actor, dates[0]!, dates.at(-1)!, travelers)?.id ?? null;
     if (!tripId && active.length) {
       const first = active[0]!.input!;

@@ -63,7 +63,10 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
-export async function oauthRoutes(app: FastifyInstance, opts: { config: Config; db: Db; tokens: Tokens; sessionUser: (req: import('fastify').FastifyRequest) => string | null }): Promise<void> {
+export async function oauthRoutes(
+  app: FastifyInstance,
+  opts: { config: Config; db: Db; tokens: Tokens; sessionUser: (req: import('fastify').FastifyRequest) => string | null },
+): Promise<void> {
   const { config, db, tokens } = opts;
   const base = config.PUBLIC_URL;
   const secure = base.startsWith('https://');
@@ -183,7 +186,8 @@ button{min-height:44px;padding:0 20px;border-radius:12px;border:1px solid #d6d1c
     if (!q.success) return fail(reply, 'Unvollständige Anfrage (Authorization Code mit PKCE/S256 ist Pflicht).');
     const c = client(q.data.client_id);
     if (!c) return fail(reply, 'Unbekannte App. Bitte die Verbindung in der App neu einrichten.');
-    if (!redirectRegistered(c.redirectUris, q.data.redirect_uri)) return fail(reply, `Diese Rücksprungadresse ist für „${c.name}“ nicht registriert: ${q.data.redirect_uri}`);
+    if (!redirectRegistered(c.redirectUris, q.data.redirect_uri))
+      return fail(reply, `Diese Rücksprungadresse ist für „${c.name}“ nicht registriert: ${q.data.redirect_uri}`);
 
     const userId = opts.sessionUser(request);
     if (!userId) {
@@ -243,7 +247,8 @@ button{min-height:44px;padding:0 20px;border-radius:12px;border:1px solid #d6d1c
       const pending = body.code ? codes.get(body.code) : undefined;
       if (body.code) codes.delete(body.code); // single use
       if (!pending || pending.expiresAt < Date.now()) return tokenError(reply, 'invalid_grant', 'Code ungültig oder abgelaufen');
-      if (pending.clientId !== body.client_id || pending.redirectUri !== body.redirect_uri) return tokenError(reply, 'invalid_grant', 'Client oder Rücksprungadresse passt nicht');
+      if (pending.clientId !== body.client_id || pending.redirectUri !== body.redirect_uri)
+        return tokenError(reply, 'invalid_grant', 'Client oder Rücksprungadresse passt nicht');
       if (!body.code_verifier || sha256url(body.code_verifier) !== pending.challenge) return tokenError(reply, 'invalid_grant', 'PKCE-Prüfung fehlgeschlagen');
       const c = client(pending.clientId);
       return issue(reply, { userId: pending.userId, clientId: pending.clientId, name: c?.name ?? 'KI-Assistent' });

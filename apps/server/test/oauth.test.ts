@@ -10,11 +10,19 @@ let anna: Awaited<ReturnType<TestApp['login']>>;
 beforeAll(async () => {
   t = await createTestApp();
   anna = await t.login('Anna');
-  await t.app.inject({ method: 'POST', url: '/api/trips', headers: anna.headers, payload: { title: 'Kopenhagen', start_date: '2027-02-01', end_date: '2027-02-04' } });
+  await t.app.inject({
+    method: 'POST',
+    url: '/api/trips',
+    headers: anna.headers,
+    payload: { title: 'Kopenhagen', start_date: '2027-02-01', end_date: '2027-02-04' },
+  });
 });
 afterAll(async () => t?.close());
 
-const form = (data: Record<string, string>) => ({ headers: { 'content-type': 'application/x-www-form-urlencoded' }, payload: new URLSearchParams(data).toString() });
+const form = (data: Record<string, string>) => ({
+  headers: { 'content-type': 'application/x-www-form-urlencoded' },
+  payload: new URLSearchParams(data).toString(),
+});
 
 describe('redirect URI rules', () => {
   it('accepts https anywhere and http only on loopback (any port)', () => {
@@ -37,7 +45,16 @@ describe('redirect URI rules', () => {
   });
 
   it('registers claude.ai without manual steps', async () => {
-    const reg = await t.app.inject({ method: 'POST', url: '/oauth/register', payload: { client_name: 'Claude', redirect_uris: ['https://claude.ai/api/mcp/auth_callback'], token_endpoint_auth_method: 'none', grant_types: ['authorization_code', 'refresh_token'] } });
+    const reg = await t.app.inject({
+      method: 'POST',
+      url: '/oauth/register',
+      payload: {
+        client_name: 'Claude',
+        redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+        token_endpoint_auth_method: 'none',
+        grant_types: ['authorization_code', 'refresh_token'],
+      },
+    });
     expect(reg.statusCode).toBe(201);
     expect(reg.json()).toMatchObject({ client_name: 'Claude', redirect_uris: ['https://claude.ai/api/mcp/auth_callback'], token_endpoint_auth_method: 'none' });
     const evil = await t.app.inject({ method: 'POST', url: '/oauth/register', payload: { redirect_uris: ['http://evil.example/cb'] } });
@@ -65,14 +82,25 @@ describe('OAuth for MCP clients', () => {
     const unauth = await t.app.inject({ method: 'POST', url: '/mcp', payload: {} });
     expect(unauth.statusCode).toBe(401);
     expect(unauth.headers['www-authenticate']).toContain(`resource_metadata="${PUBLIC_URL}/.well-known/oauth-protected-resource"`);
-    expect((await t.app.inject({ method: 'GET', url: '/.well-known/oauth-protected-resource' })).json()).toMatchObject({ resource: `${PUBLIC_URL}/mcp`, authorization_servers: [PUBLIC_URL] });
+    expect((await t.app.inject({ method: 'GET', url: '/.well-known/oauth-protected-resource' })).json()).toMatchObject({
+      resource: `${PUBLIC_URL}/mcp`,
+      authorization_servers: [PUBLIC_URL],
+    });
     expect((await t.app.inject({ method: 'GET', url: '/.well-known/oauth-authorization-server' })).json()).toMatchObject({
       registration_endpoint: `${PUBLIC_URL}/oauth/register`,
       code_challenge_methods_supported: ['S256'],
     });
 
-    const clientId = (await t.app.inject({ method: 'POST', url: '/oauth/register', payload: { client_name: 'Claude', redirect_uris: [redirect] } })).json().client_id;
-    const q = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirect, code_challenge: challenge, code_challenge_method: 'S256', state: 'xyz' });
+    const clientId = (await t.app.inject({ method: 'POST', url: '/oauth/register', payload: { client_name: 'Claude', redirect_uris: [redirect] } })).json()
+      .client_id;
+    const q = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirect,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      state: 'xyz',
+    });
 
     // Without a session: through the SSO login and back.
     const anon = await t.app.inject({ method: 'GET', url: `/oauth/authorize?${q}` });
@@ -80,7 +108,11 @@ describe('OAuth for MCP clients', () => {
     expect(anon.headers.location).toBe(`/auth/login?next=${encodeURIComponent(`/oauth/authorize?${q}`)}`);
 
     // Unregistered redirect URI is refused.
-    const wrong = await t.app.inject({ method: 'GET', url: `/oauth/authorize?${new URLSearchParams({ ...Object.fromEntries(q), redirect_uri: 'https://evil.example/cb' })}`, headers: anna.headers });
+    const wrong = await t.app.inject({
+      method: 'GET',
+      url: `/oauth/authorize?${new URLSearchParams({ ...Object.fromEntries(q), redirect_uri: 'https://evil.example/cb' })}`,
+      headers: anna.headers,
+    });
     expect(wrong.statusCode).toBe(400);
 
     // Consent page
@@ -106,7 +138,11 @@ describe('OAuth for MCP clients', () => {
     const code = back.searchParams.get('code')!;
 
     // Wrong verifier fails, and the code is single use.
-    const bad = await t.app.inject({ method: 'POST', url: '/oauth/token', ...form({ grant_type: 'authorization_code', code, client_id: clientId, redirect_uri: redirect, code_verifier: 'x'.repeat(43) }) });
+    const bad = await t.app.inject({
+      method: 'POST',
+      url: '/oauth/token',
+      ...form({ grant_type: 'authorization_code', code, client_id: clientId, redirect_uri: redirect, code_verifier: 'x'.repeat(43) }),
+    });
     expect(bad.json().error).toBe('invalid_grant');
 
     // Fresh code, correct exchange.
@@ -119,7 +155,11 @@ describe('OAuth for MCP clients', () => {
       headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: `${anna.cookie}; ${(consent2.headers['set-cookie'] as string).split(';')[0]}` },
     });
     const code2 = new URL(allow2.headers.location as string).searchParams.get('code')!;
-    const tok = await t.app.inject({ method: 'POST', url: '/oauth/token', ...form({ grant_type: 'authorization_code', code: code2, client_id: clientId, redirect_uri: redirect, code_verifier: verifier }) });
+    const tok = await t.app.inject({
+      method: 'POST',
+      url: '/oauth/token',
+      ...form({ grant_type: 'authorization_code', code: code2, client_id: clientId, redirect_uri: redirect, code_verifier: verifier }),
+    });
     expect(tok.statusCode).toBe(200);
     const { access_token, refresh_token, expires_in } = tok.json();
     expect(expires_in).toBe(3600);
@@ -140,19 +180,42 @@ describe('OAuth for MCP clients', () => {
     expect(ref.statusCode).toBe(200);
     const fresh = ref.json();
     expect(fresh.refresh_token).not.toBe(refresh_token);
-    expect((await t.app.inject({ method: 'POST', url: '/oauth/token', ...form({ grant_type: 'refresh_token', refresh_token, client_id: clientId }) })).json().error).toBe('invalid_grant');
+    expect(
+      (await t.app.inject({ method: 'POST', url: '/oauth/token', ...form({ grant_type: 'refresh_token', refresh_token, client_id: clientId }) })).json().error,
+    ).toBe('invalid_grant');
     expect((await t.app.inject({ method: 'GET', url: '/api/trips', headers: { authorization: `Bearer ${access_token}` } })).statusCode).toBe(401);
     expect((await t.app.inject({ method: 'GET', url: '/api/trips', headers: { authorization: `Bearer ${fresh.access_token}` } })).statusCode).toBe(200);
 
     // "Trennen" in the settings
     expect((await t.app.inject({ method: 'DELETE', url: `/api/tokens/${connected.id}`, headers: anna.headers })).statusCode).toBe(200);
     expect((await t.app.inject({ method: 'GET', url: '/api/trips', headers: { authorization: `Bearer ${fresh.access_token}` } })).statusCode).toBe(401);
-    expect((await t.app.inject({ method: 'POST', url: '/oauth/token', ...form({ grant_type: 'refresh_token', refresh_token: fresh.refresh_token, client_id: clientId }) })).statusCode).toBe(400);
+    expect(
+      (
+        await t.app.inject({
+          method: 'POST',
+          url: '/oauth/token',
+          ...form({ grant_type: 'refresh_token', refresh_token: fresh.refresh_token, client_id: clientId }),
+        })
+      ).statusCode,
+    ).toBe(400);
   });
 
   it('sends "deny" back as access_denied', async () => {
-    const clientId = (await t.app.inject({ method: 'POST', url: '/oauth/register', payload: { client_name: 'Inspector', redirect_uris: ['http://localhost:6274/oauth/callback'] } })).json().client_id;
-    const q = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: 'http://localhost:9999/oauth/callback', code_challenge: challenge, code_challenge_method: 'S256', state: 's1' });
+    const clientId = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/oauth/register',
+        payload: { client_name: 'Inspector', redirect_uris: ['http://localhost:6274/oauth/callback'] },
+      })
+    ).json().client_id;
+    const q = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: 'http://localhost:9999/oauth/callback',
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      state: 's1',
+    });
     const consent = await t.app.inject({ method: 'GET', url: `/oauth/authorize?${q}`, headers: anna.headers });
     expect(consent.statusCode).toBe(200); // other loopback port is fine
     const csrf = /name="csrf" value="([^"]+)"/.exec(consent.body)![1]!;

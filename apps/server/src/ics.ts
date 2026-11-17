@@ -29,7 +29,10 @@ export function foldLine(line: string): string {
 }
 
 function utcStamp(d: Date): string {
-  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  return d
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '');
 }
 
 function dateValue(date: string): string {
@@ -95,9 +98,22 @@ export function segmentEvents(s: SegmentView, tripUrl: string): Event[] {
   if (s.type === 'hotel' || s.type === 'parking') {
     const [inLabel, outLabel, minutes] = s.type === 'hotel' ? ['Check-in', 'Check-out', 30] : ['Einfahrt', 'Ausfahrt', 15];
     const events: Event[] = [];
-    if (s.start_local) events.push({ ...base, uid: `${s.id}-in@trips`, summary: `${icon} ${inLabel}: ${s.title}`, location: s.address, ...at(s.start_local, s.start_tz, minutes) });
+    if (s.start_local)
+      events.push({
+        ...base,
+        uid: `${s.id}-in@trips`,
+        summary: `${icon} ${inLabel}: ${s.title}`,
+        location: s.address,
+        ...at(s.start_local, s.start_tz, minutes),
+      });
     if (s.end_local)
-      events.push({ ...base, uid: `${s.id}-out@trips`, summary: `${icon} ${outLabel}: ${s.title}`, location: s.address, ...at(s.end_local, s.end_tz ?? s.start_tz, minutes) });
+      events.push({
+        ...base,
+        uid: `${s.id}-out@trips`,
+        summary: `${icon} ${outLabel}: ${s.title}`,
+        location: s.address,
+        ...at(s.end_local, s.end_tz ?? s.start_tz, minutes),
+      });
     return events;
   }
   if (!s.start_local) return [];
