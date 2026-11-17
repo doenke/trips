@@ -16,7 +16,7 @@ jobs:
     outputs:
       app: ${{ steps.v.outputs.app }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: v
@@ -26,9 +26,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -48,13 +48,13 @@ jobs:
       IMAGE: ghcr.io/${{ github.repository }}
       VERSION: ${{ needs.version.outputs.app }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
 
       # Smoke test: start the image once and wait for /healthz before anything is pushed.
       - name: Build for the smoke test
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
@@ -67,9 +67,10 @@ jobs:
         run: |
           docker run -d --name smoke -p 41873:41873 -e SESSION_KEY=ci-smoke-test-key-0123456789 -e PUBLIC_URL=http://localhost:41873 trips:smoke
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:41873/healthz | tee /tmp/health.json; then break; fi
+            if curl -fsS -o /tmp/health.json http://localhost:41873/healthz; then break; fi
             sleep 2
           done
+          cat /tmp/health.json
           grep -q '"status":"ok"' /tmp/health.json
           grep -q "\"version\":\"$VERSION\"" /tmp/health.json
           echo "Healthcheck: \`$(cat /tmp/health.json)\`" >> "$GITHUB_STEP_SUMMARY"
@@ -83,7 +84,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - if: github.event_name != 'pull_request'
         name: Push amd64 + arm64
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
