@@ -217,7 +217,9 @@ export async function buildApp(config: Config, deps: Deps = {}): Promise<{ app: 
     });
   }
   app.setNotFoundHandler((request, reply) => {
-    if (request.method === 'GET' && !/^\/(api|auth|oauth|mcp|ics|avatar|healthz)/.test(request.url) && existsSync(join(webDist, 'index.html'))) {
+    // App routes (/trips/…, /settings) get the shell; missing files (with an extension) stay 404.
+    const path = request.url.split('?')[0]!;
+    if (request.method === 'GET' && !/^\/(api|auth|oauth|mcp|ics|avatar|healthz)/.test(path) && !/\.[a-z0-9]+$/i.test(path) && existsSync(join(webDist, 'index.html'))) {
       return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
     }
     return reply.code(404).send({ error: 'not_found', message: 'Nicht gefunden' });
