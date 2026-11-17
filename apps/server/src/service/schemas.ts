@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { isValidLocal, isValidZone } from '../time.js';
 
+// Validation messages in German, for REST and MCP alike.
+z.config(z.locales.de());
+
 /** Shared by REST and MCP: one schema per input, snake_case on the wire. */
 
 export const SEGMENT_TYPES = ['flight', 'train', 'hotel', 'car', 'parking', 'other'] as const;

@@ -31,7 +31,7 @@ export class AirTrailSync implements TripHooks {
   private queue: Promise<void> = Promise.resolve();
 
   constructor(
-    private readonly client: AirTrailClient | null,
+    readonly client: AirTrailClient | null,
     private readonly trips: TripService,
     private readonly users: UserService,
     private readonly log: FastifyBaseLogger,
