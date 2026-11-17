@@ -96,4 +96,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - if: github.event_name != 'pull_request'
-        run: echo "Image: \`${IMAGE}:${VERSION}\` und \`:latest\` (amd64, arm64)" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Image: \`${IMAGE}:${VERSION}\` und \`:latest\` (amd64, arm64)" >> "$GITHUB_STEP_SUMMARY"
