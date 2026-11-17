@@ -52,6 +52,10 @@ export class MailPoller {
     client.on('exists', () => void this.run());
     try {
       await client.connect();
+      if (this.config.IMAP_DONE_MAILBOX) {
+        // Create the done folder once; "already exists" is fine.
+        await client.mailboxCreate(this.config.IMAP_DONE_MAILBOX).catch(() => undefined);
+      }
       await client.mailboxOpen(this.config.IMAP_MAILBOX);
       this.client = client;
       this.reconnectDelay = 10_000;
@@ -75,7 +79,11 @@ export class MailPoller {
     try {
       do {
         this.again = false;
-        const uids = (await client.search({ seen: false }, { uid: true })) || [];
+        // With a done folder every mail in the folder is new (processed ones are moved away), even if a
+        // mail client already marked it as read – the import folder may live in a personal mailbox.
+        // Without one, read/unread is the only marker.
+        const query = this.config.IMAP_DONE_MAILBOX ? { all: true } : { seen: false };
+        const uids = (await client.search(query, { uid: true })) || [];
         for (const uid of uids) {
           try {
             const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });

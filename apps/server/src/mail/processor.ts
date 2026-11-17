@@ -116,6 +116,10 @@ export class MailProcessor {
       return status;
     };
 
+    // Auto-replies, vacation notices, our own summaries: never answer them (no mail loops).
+    const auto = String(mail.headers.get('auto-submitted') ?? 'no').toLowerCase();
+    if (auto !== 'no') return finish('ignored', `Automatische Mail (Auto-Submitted: ${auto}) – nicht verarbeitet.`);
+
     if (this.opts.requireDmarcPass && dmarcResult(mail) === 'fail') {
       this.log.warn({ sender }, 'Mail abgelehnt: DMARC fehlgeschlagen (Absender vermutlich gefälscht)');
       return finish('rejected', 'DMARC-Prüfung fehlgeschlagen – Absender vermutlich gefälscht');

@@ -163,8 +163,8 @@ mitreist (oder alles, wenn du Admin bist). Die Werkzeuge: `list_trips`, `get_tri
 | `SESSION_KEY` | Signiert Sitzungen und verschlüsselt die AirTrail-Keys. Nach dem Start nicht mehr ändern |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID` | Dein Pocket ID und der Client für Trips |
 | `OIDC_ADMIN_GROUP` | Gruppe der Admins, Standard `admins` |
-| `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD` | Das Import-Postfach, an das ihr Buchungen weiterleitet |
-| `IMAP_DONE_MAILBOX` | Verarbeitete Mails dorthin verschieben statt nur als gelesen markieren |
+| `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_MAILBOX` | Postfach und Ordner, in dem weitergeleitete Buchungen landen – auch ein Ordner im normalen Postfach |
+| `IMAP_DONE_MAILBOX` | Verarbeitete Mails dorthin verschieben; dann zählt auch schon Gelesenes im Ordner |
 | `MAIL_REQUIRE_DMARC_PASS` | Mails mit gefälschtem Absender (DMARC fehlgeschlagen) ablehnen |
 | `IMPORT_ADDRESS` | Die Weiterleitungsadresse, wie sie in der App angezeigt wird |
 | `SMTP_*` | Für die Zusammenfassungs-Mails (optional) |
@@ -206,6 +206,21 @@ Wirf nach dem Import einen Blick auf die Zusammenfassung.
 
 - In `.env` `TRUSTED_PROXY=true` setzen.
 
+### Import-Postfach ohne eigenes Postfach
+
+Trips liest per IMAP genau einen Ordner – das muss kein eigenes Postfach sein:
+
+1. `trips@example.org` als **Alias** deines normalen Postfachs anlegen.
+2. Eine **Filterregel**: Empfänger ist `trips@example.org` → in den Ordner `Trips` verschieben.
+3. In `.env` dein normales Konto eintragen (am besten mit eigenem App-Passwort), dazu
+   `IMAP_MAILBOX=Trips` und `IMAP_DONE_MAILBOX=Trips/Erledigt`.
+
+Mit gesetztem Erledigt-Ordner verarbeitet Trips jede Mail im Ordner `Trips`, auch wenn dein
+Mailprogramm sie schon als gelesen markiert hat, und schiebt sie danach weg. Ehrlich gesagt:
+Trips kann mit diesem Zugang technisch dein ganzes Postfach lesen, rührt aber nur die beiden
+Ordner an. Automatische Mails (Abwesenheitsnotizen, die eigenen Zusammenfassungen) ignoriert
+Trips, damit keine Mail-Schleifen entstehen.
+
 ### Wichtige Hinweise für den Betrieb
 
 - **Backup:** Alles liegt unter `/data/container/trips/data` – die Datenbank `trips.db`
@@ -217,8 +232,8 @@ Wirf nach dem Import einen Blick auf die Zusammenfassung.
 - **Version:** steht unten in den Einstellungen und im Healthcheck, Format `x.yy.zzz`.
 - **AirTrail** braucht eine Version mit der **API v1** (`/api/v1/flights`). Ältere Versionen
   mit nur `/api/flight/save` funktionieren nicht.
-- **Mail-Import:** Trips liest ungelesene Mails im Postfach, per IMAP IDLE fast sofort, dazu alle
-  `IMAP_POLL_MINUTES` Minuten. Jede Mail wird über ihre Message-ID nur einmal verarbeitet.
+- **Mail-Import:** Trips liest den Import-Ordner per IMAP IDLE fast sofort, dazu alle
+  `IMAP_POLL_MINUTES` Minuten (siehe [Import-Postfach ohne eigenes Postfach](#import-postfach-ohne-eigenes-postfach)). Jede Mail wird über ihre Message-ID nur einmal verarbeitet.
   Unbekannte Absender werden ignoriert; das Log sehen Admins in den Einstellungen.
 - **`DEV_LOGIN=true`** erlaubt eine Anmeldung nur mit Namen – nur für die Entwicklung, **nie in
   Produktion**.

@@ -164,7 +164,7 @@ export function seg(p: Partial<Extraction['segments'][number]> & { type: Extract
 }
 
 /** A raw RFC 822 mail. */
-export function rawMail(p: { from: string; subject: string; text: string; messageId: string; authResults?: string; pdf?: Buffer }): string {
+export function rawMail(p: { from: string; subject: string; text: string; messageId: string; authResults?: string; pdf?: Buffer; autoSubmitted?: string }): string {
   const headers = [
     `From: ${p.from}`,
     'To: trips@example.org',
@@ -173,6 +173,7 @@ export function rawMail(p: { from: string; subject: string; text: string; messag
     'Date: Tue, 17 Nov 2026 10:00:00 +0100',
     'MIME-Version: 1.0',
     ...(p.authResults ? [`Authentication-Results: mx.example.org; ${p.authResults}`] : []),
+    ...(p.autoSubmitted ? [`Auto-Submitted: ${p.autoSubmitted}`] : []),
   ];
   if (!p.pdf) return [...headers, 'Content-Type: text/plain; charset=utf-8', '', p.text, ''].join('\r\n');
   return [

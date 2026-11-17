@@ -99,6 +99,13 @@ describe('mail import', () => {
     expect(t.sent).toHaveLength(0);
   });
 
+  it('ignores automatic mails, e.g. its own summaries (no loops)', async () => {
+    const before = t.extractions.length;
+    expect(await t.services.mail.process(mail('soenke@example.org', { autoSubmitted: 'auto-replied' }))).toBe('ignored');
+    expect(t.extractions.length).toBe(before);
+    expect(t.sent).toHaveLength(0);
+  });
+
   it('rejects mail that failed DMARC', async () => {
     expect(await t.services.mail.process(mail('soenke@example.org', { authResults: 'spf=fail; dkim=none; dmarc=fail header.from=example.org' }))).toBe(
       'rejected',
