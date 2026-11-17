@@ -17,9 +17,9 @@ export function splitFlightNumber(number: string | null, carrier: string | null)
 /** One seat per traveler when the booking lists as many seats as there are travelers; one traveler gets the whole field. */
 function seatFor(seat: string | null, index: number, count: number): string | undefined {
   if (!seat) return undefined;
-  if (count === 1) return seat.slice(0, 10);
+  if (count === 1) return seat.slice(0, 20);
   const parts = seat.split(/[,/;]\s*|\s+/).filter(Boolean);
-  return parts.length === count ? parts[index]!.slice(0, 10) : undefined;
+  return parts.length === count ? parts[index]!.slice(0, 20) : undefined;
 }
 
 /**
