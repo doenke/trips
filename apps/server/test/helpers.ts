@@ -164,7 +164,15 @@ export function seg(p: Partial<Extraction['segments'][number]> & { type: Extract
 }
 
 /** A raw RFC 822 mail. */
-export function rawMail(p: { from: string; subject: string; text: string; messageId: string; authResults?: string; pdf?: Buffer; autoSubmitted?: string }): string {
+export function rawMail(p: {
+  from: string;
+  subject: string;
+  text: string;
+  messageId: string;
+  authResults?: string;
+  pdf?: Buffer;
+  autoSubmitted?: string;
+}): string {
   const headers = [
     `From: ${p.from}`,
     'To: trips@example.org',
