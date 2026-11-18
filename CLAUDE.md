@@ -31,7 +31,9 @@ pnpm-Monorepo: `apps/server` (Fastify 5, node:sqlite, TypeScript 7), `apps/web` 
   - `matching.ts` – `pickTrip` (±`TRIP_MATCH_DAYS`, meiste gemeinsame Reisende, dann nächstgelegen), `sameSegment`.
   - `names.ts` – toleranter Passagier-Abgleich. `users.ts` – Konten, Zusatz-Absenderadressen, ICS-Token, AirTrail-Key.
   - `schemas.ts` – zod-Schemas für REST *und* MCP (snake_case), deutsche zod-Meldungen.
-  - `exchange.ts` – JSON-Export/-Import; `tripit.ts` – TripIt-Mapping (wartet noch auf eine Beispiel-Reise).
+  - `exchange.ts` – JSON-Export/-Import; `tripit.ts` – TripIt-Dump → Exportformat (UTC → Ortszeit über
+    Flughafen-Zonen; Hotels über die lokale Uhrzeit; Mietwagen-Paare; Bahn). Echte Dumps nie ins Repo – Tests nutzen ausgedachte Daten.
+- `airports.ts` + `data/airport-zones.json` – IATA → IANA-Zone (mwgg/Airports, MIT). Flüge ohne Zone bekommen sie daraus.
 - `extract/claude.ts` – Structured Outputs (kein erzwungener Tool-Call: Sonnet 5.5 lehnt `tool_choice: tool` ab), PDFs als `document`-Blöcke.
 - `airtrail/` – API-v1-Client und serialisierte Sync-Queue (`TripHooks`), Fehler am Segment (`airtrail_error`).
 - `auth/` – OIDC (openid-client v6), Sessions (signiertes Cookie, Hash in DB), Tokens (nur Hashes), Avatare.

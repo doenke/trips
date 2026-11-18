@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { airportZone } from '../airports.js';
 import type { Db } from '../db/index.js';
 import { localToUtc, todayIn } from '../time.js';
 import { type Actor, badRequest, forbidden, notFound } from './errors.js';
@@ -385,6 +386,16 @@ export class TripService {
 
   // ---- segments ---------------------------------------------------------------------
 
+  /** Flights without a zone get it from the airport (IATA table): local times stay right in ICS and AirTrail. */
+  private withAirportZones(s: SegmentInput): SegmentInput {
+    if (s.type !== 'flight') return s;
+    return {
+      ...s,
+      start_tz: s.start_tz ?? (s.start_local ? airportZone(s.from_code) : null),
+      end_tz: s.end_tz ?? (s.end_local ? airportZone(s.to_code) : null),
+    };
+  }
+
   private validateSegment(s: SegmentInput): void {
     if (s.start_local && s.end_local) {
       const a = utcOf(s.start_local, s.start_tz);
@@ -395,6 +406,7 @@ export class TripService {
 
   addSegment(actor: Actor, tripId: string, input: SegmentInput, source: Source = 'manual'): SegmentView {
     this.requireEditable(actor, tripId);
+    input = this.withAirportZones(input);
     this.validateSegment(input);
     const id = randomUUID();
     const values = SEGMENT_COLUMNS.map((c) => (c === 'title' ? autoTitle(input) : input[c]));
@@ -424,6 +436,7 @@ export class TripService {
     for (const c of SEGMENT_COLUMNS) if (patch[c] !== undefined) (merged as Record<string, unknown>)[c] = patch[c];
     if (patch.title === null || (patch.title === undefined && !s.title)) merged.title = null;
     merged.title = autoTitle(merged);
+    Object.assign(merged, this.withAirportZones(merged));
     this.validateSegment(merged);
     this.db.tx(() => {
       this.db.run(

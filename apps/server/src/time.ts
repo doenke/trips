@@ -117,3 +117,21 @@ export function addDays(date: string, days: number): string {
 export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
+
+/** UTC instant → wall-clock time in a zone, as "YYYY-MM-DDTHH:MM". */
+export function utcToLocal(instant: Date, tz: string): string {
+  const parts = Object.fromEntries(
+    formatter(tz)
+      .formatToParts(instant)
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+/** A fixed-offset IANA zone for whole hours ("Etc/GMT-2" is UTC+2 – the sign is inverted by POSIX). */
+export function fixedZone(offsetMinutes: number): string | null {
+  if (offsetMinutes === 0) return 'UTC';
+  if (offsetMinutes % 60 !== 0 || Math.abs(offsetMinutes) > 14 * 60) return null;
+  const h = offsetMinutes / 60;
+  return `Etc/GMT${h > 0 ? '-' : '+'}${Math.abs(h)}`;
+}

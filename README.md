@@ -175,6 +175,29 @@ mitreist (oder alles, wenn du Admin bist). Die Werkzeuge: `list_trips`, `get_tri
 
 Alle Werte mit Erklärung stehen in [`.env.example`](.env.example).
 
+## Umzug von TripIt
+
+Hast du deine alten Reisen als TripIt-Dump (JSON mit `trips`, darin `flights`, `accommodations`,
+`parkings` und `others`), wirf ihn als Admin unter **Einstellungen → Admin → JSON-Import** hinein.
+Trips macht daraus:
+
+- **Flüge** mit Flugnummer („EW 9754“), Airline und Flughäfen. TripIt liefert nur UTC-Zeiten;
+  Trips rechnet sie über eine eingebaute Flughafen-Tabelle (IATA → Zeitzone) in Ortszeit um.
+- **Hotels** mit der Check-in- und Check-out-Uhrzeit vor Ort, Adresse und Telefon.
+- **Mietwagen:** „Pick Up“ und „Drop Off“ werden ein Eintrag von der Abholung bis zur Rückgabe.
+- **Bahn** („DB - Aachen Hbf to Düsseldorf Flughafen“) als Zug mit Anbieter und Strecke,
+  **Parkplätze** als 🅿️, Restaurants, Transfers und Aktivitäten als „Sonstiges“.
+
+Reisende stehen im Dump nicht drin: Alle Reisen landen erst einmal bei dir, Mitreisende trägst du
+danach in der Reise ein. Reisen mit gleichem Titel und Startdatum werden übersprungen, ein zweiter
+Import schadet also nicht. **Achtung AirTrail:** Hast du schon einen AirTrail-Key hinterlegt, gehen
+auch alle importierten Flüge dorthin – stehen sie dort schon, hast du sie doppelt. Dann den Key erst
+nach dem Import eintragen und alte Flüge in AirTrail vorher aufräumen.
+
+Grenzen: Wo TripIt weder Ortszeit noch Flug kennt, nimmt Trips die Zeitzone des nächstgelegenen
+Flughafens der Reise oder Europe/Berlin. Halbe Hotelbuchungen (nur Check-in oder nur Check-out)
+kommen so mit, wie sie im Dump stehen, mit TripIts Warnung in den Notizen.
+
 ## Was Trips nicht kann
 
 Ehrlich gesagt: Trips ist absichtlich klein. Es gibt keine Karten, keine Sehenswürdigkeiten,
@@ -240,8 +263,9 @@ Trips, damit keine Mail-Schleifen entstehen.
   Unbekannte Absender werden ignoriert; das Log sehen Admins in den Einstellungen.
 - **`DEV_LOGIN=true`** erlaubt eine Anmeldung nur mit Namen – nur für die Entwicklung, **nie in
   Produktion**.
-- **Altdaten:** Admins können unter Einstellungen einen JSON-Export von Trips wieder einlesen.
+- **Altdaten:** Admins können unter **Einstellungen → Admin → JSON-Import** einen Export von Trips
+  oder einen **TripIt-Dump** einlesen (siehe [Umzug von TripIt](#umzug-von-tripit)).
 
 ## Lizenz
 
-[MIT](LICENSE)
+[MIT](LICENSE). Die Flughafen-Zeitzonen stammen aus [mwgg/Airports](https://github.com/mwgg/Airports) (MIT).
