@@ -473,6 +473,21 @@ export class TripService {
     this.db.run('UPDATE segments SET airtrail_ids = ?, airtrail_error = ? WHERE id = ?', JSON.stringify(ids), error, segmentId);
   }
 
+  /** AirTrail flight ids a user's other segments already use – never link one flight twice. */
+  linkedAirtrailIds(userId: string, exceptSegmentId: string): Set<string> {
+    const rows = this.db.all<{ airtrail_ids: string }>(
+      `SELECT airtrail_ids FROM segments WHERE id != ? AND airtrail_ids LIKE ?`,
+      exceptSegmentId,
+      `%${userId}%`,
+    );
+    const ids = new Set<string>();
+    for (const r of rows) {
+      const id = (JSON.parse(r.airtrail_ids) as Record<string, string>)[userId];
+      if (id) ids.add(id);
+    }
+    return ids;
+  }
+
   flightSegmentIds(tripId: string): string[] {
     return this.db.all<{ id: string }>(`SELECT id FROM segments WHERE trip_id = ? AND (type = 'flight' OR airtrail_ids != '{}')`, tripId).map((r) => r.id);
   }

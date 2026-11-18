@@ -146,3 +146,123 @@ describe('AirTrail sync', () => {
     expect(f).toMatchObject({ fromId: 3, departure: '2027-05-03T07:00:00-04:00' });
   });
 });
+
+describe('AirTrail duplicate protection', () => {
+  let d: TestApp;
+  let anna: Awaited<ReturnType<TestApp['login']>>;
+  let ben: Awaited<ReturnType<TestApp['login']>>;
+  let tripId: string;
+  const leg = { ...flight, start_local: '2027-06-01T07:00', end_local: '2027-06-01T08:10' };
+
+  beforeAll(async () => {
+    d = await createTestApp();
+    anna = await d.login('Anna');
+    ben = await d.login('Ben');
+    await d.app.inject({ method: 'PUT', url: '/api/me/airtrail', headers: anna.headers, payload: { key: 'key-anna' } });
+    await d.app.inject({ method: 'PUT', url: '/api/me/airtrail', headers: ben.headers, payload: { key: 'key-ben' } });
+    tripId = (await d.app.inject({ method: 'POST', url: '/api/trips', headers: anna.headers, payload: { title: 'Doppelt?' } })).json().id;
+    await d.idle();
+  });
+  afterAll(async () => d?.close());
+
+  const segIds = (id: string) => JSON.parse(d.services.trips.rawSegment(id)!.airtrail_ids) as Record<string, string>;
+
+  it('links a flight that is already in AirTrail instead of creating a second one, and keeps what AirTrail knows', async () => {
+    // Entered by hand in AirTrail before: with aircraft, gate, a guest and an own note.
+    const manual = d.airtrail.addManual('at-anna', {
+      date: '2027-06-01',
+      datePrecision: 'day',
+      fromId: 1,
+      toId: 2,
+      flightNumber: 'LH2010',
+      aircraftReg: 'D-AIZA',
+      departureGate: 'B12',
+      note: 'Fensterplatz!',
+      passengers: [
+        { userId: 'at-anna', seatNumber: '1A' },
+        { userId: null, guestName: 'Oma' },
+      ],
+    });
+    const posts = d.airtrail.count('POST');
+    const id = (await d.app.inject({ method: 'POST', url: `/api/trips/${tripId}/segments`, headers: anna.headers, payload: { ...leg, seat: null } })).json().id;
+    await d.idle();
+    expect(d.airtrail.count('POST')).toBe(posts);
+    expect(segIds(id)).toEqual({ [anna.id]: manual });
+    const f = d.airtrail.flights.get(manual)!;
+    expect(f).toMatchObject({ aircraftReg: 'D-AIZA', departureGate: 'B12', note: 'Fensterplatz!', departure: '2027-06-01T07:00:00+02:00', airlineId: 10 });
+    // Own seat kept (Trips had none), the guest stays on the flight.
+    expect(f.passengers).toEqual([
+      expect.objectContaining({ userId: 'at-anna', seatNumber: '1A' }),
+      expect.objectContaining({ userId: null, guestName: 'Oma' }),
+    ]);
+    await d.app.inject({ method: 'DELETE', url: `/api/segments/${id}`, headers: anna.headers });
+    await d.idle();
+  });
+
+  it('creates a new flight when the flight number or the day differs, and never links one flight twice', async () => {
+    const other = d.airtrail.addManual('at-anna', { date: '2027-06-02', fromId: 1, toId: 2, flightNumber: 'LH2010', passengers: [{ userId: 'at-anna' }] });
+    const before = d.airtrail.count('POST');
+    const a = (
+      await d.app.inject({ method: 'POST', url: `/api/trips/${tripId}/segments`, headers: anna.headers, payload: { ...leg, number: 'LH 2012' } })
+    ).json().id;
+    const b = (
+      await d.app.inject({ method: 'POST', url: `/api/trips/${tripId}/segments`, headers: anna.headers, payload: { ...leg, number: 'LH 2012' } })
+    ).json().id;
+    await d.idle();
+    expect(d.airtrail.count('POST')).toBe(before + 2);
+    expect(segIds(a)[anna.id]).not.toBe(segIds(b)[anna.id]);
+    expect([segIds(a)[anna.id], segIds(b)[anna.id]]).not.toContain(other);
+  });
+
+  it('only unlinks a flight that another traveler shares', async () => {
+    // One AirTrail flight with both as passengers – both get linked to it.
+    const shared = d.airtrail.addManual('at-anna', {
+      date: '2027-06-05',
+      fromId: 2,
+      toId: 1,
+      flightNumber: 'LH2011',
+      passengers: [{ userId: 'at-anna' }, { userId: 'at-ben' }],
+    });
+    await d.app.inject({ method: 'PATCH', url: `/api/trips/${tripId}`, headers: anna.headers, payload: { traveler_ids: [anna.id, ben.id] } });
+    const id = (
+      await d.app.inject({
+        method: 'POST',
+        url: `/api/trips/${tripId}/segments`,
+        headers: anna.headers,
+        payload: { ...leg, number: 'LH 2011', from_code: 'MUC', to_code: 'DUS', start_local: '2027-06-05T09:00', end_local: '2027-06-05T10:10' },
+      })
+    ).json().id;
+    await d.idle();
+    expect(segIds(id)).toEqual({ [anna.id]: shared, [ben.id]: shared });
+    await d.app.inject({ method: 'PATCH', url: `/api/trips/${tripId}`, headers: anna.headers, payload: { traveler_ids: [anna.id] } });
+    await d.idle();
+    expect(d.airtrail.flights.has(shared)).toBe(true);
+    expect(segIds(id)).toEqual({ [anna.id]: shared });
+  });
+
+  it('does not duplicate flights on import when they are already in AirTrail', async () => {
+    const admin = await d.login('Chef', { admin: true, email: 'chef@example.org' });
+    d.airtrail.users['key-chef'] = { id: 'at-chef', username: 'chef' };
+    await d.app.inject({ method: 'PUT', url: '/api/me/airtrail', headers: admin.headers, payload: { key: 'key-chef' } });
+    // Five flights the user already has in AirTrail (more than one page).
+    for (let day = 10; day < 15; day++)
+      d.airtrail.addManual('at-chef', { date: `2027-07-${day}`, fromId: 1, toId: 2, flightNumber: `LH${day}`, passengers: [{ userId: 'at-chef' }] });
+    const data = {
+      format: 'trips-export',
+      version: 1,
+      trips: [10, 11, 12, 13, 14, 15].map((day) => ({
+        title: `Tag ${day}`,
+        start_date: `2027-07-${day}`,
+        end_date: `2027-07-${day}`,
+        segments: [
+          { type: 'flight', number: `LH ${day}`, from_code: 'DUS', to_code: 'MUC', start_local: `2027-07-${day}T07:00`, end_local: `2027-07-${day}T08:00` },
+        ],
+      })),
+    };
+    const before = d.airtrail.count('POST');
+    await d.app.inject({ method: 'POST', url: '/api/admin/import', headers: admin.headers, payload: data });
+    await d.idle();
+    expect(d.airtrail.count('POST')).toBe(before + 1); // only day 15 is new
+    expect([...d.airtrail.flights.values()].filter((f) => f.owner === 'at-chef')).toHaveLength(6);
+  });
+});

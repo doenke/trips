@@ -46,6 +46,14 @@ export class FakeAirTrail {
       const q = url.searchParams.get('query')!.toUpperCase();
       return json(200, { data: this.airlines.filter((a) => a.iata === q || a.icao === q) });
     }
+    if (p === '/api/v1/flights' && method === 'GET') {
+      // Two pages, to exercise the cursor.
+      const mine = [...this.flights.entries()].filter(([, f]) => this.visibleTo(f, user.id)).map(([id, f]) => this.dto(id, f));
+      const start = Number(url.searchParams.get('cursor') ?? 0);
+      const pageSize = 2;
+      const next = start + pageSize < mine.length ? String(start + pageSize) : null;
+      return json(200, { data: mine.slice(start, start + pageSize), page: { nextCursor: next } });
+    }
     if (p === '/api/v1/flights' && method === 'POST') {
       const id = String(this.next++);
       this.flights.set(id, { ...body, owner: user.id });
@@ -54,13 +62,44 @@ export class FakeAirTrail {
     const m = /^\/api\/v1\/flights\/(\w+)$/.exec(p);
     if (m) {
       const f = this.flights.get(m[1]!);
-      if (!f || f.owner !== user.id) return json(404, { message: 'Not found' });
+      if (!f || !this.visibleTo(f, user.id)) return json(404, { message: 'Not found' });
+      if (method === 'GET') return json(200, { data: this.dto(m[1]!, f) });
       if (method === 'PUT') this.flights.set(m[1]!, { ...body, owner: user.id });
       if (method === 'DELETE') this.flights.delete(m[1]!);
       return new Response(null, { status: 204 });
     }
     return json(404, { message: 'nope' });
   };
+
+  private visibleTo(f: Record<string, unknown> & { owner: string }, userId: string): boolean {
+    return f.owner === userId || ((f.passengers as { userId: string | null }[]) ?? []).some((p) => p.userId === userId);
+  }
+
+  /** A stored flight as the API returns it. */
+  dto(id: string, f: Record<string, unknown>) {
+    const airport = (aid: unknown) => this.airports.find((a) => a.id === aid) ?? null;
+    return {
+      ...f,
+      id: Number(id),
+      from: airport(f.fromId),
+      to: airport(f.toId),
+      airline: f.airlineId ? { id: f.airlineId } : null,
+      aircraft: f.aircraftId ? { id: f.aircraftId } : null,
+      passengers: ((f.passengers as { userId: string | null; guestName?: string; seatNumber?: string }[]) ?? []).map((p, i) => ({
+        id: i + 1,
+        user: p.userId ? { id: p.userId } : null,
+        guestName: p.guestName ?? null,
+        seatNumber: p.seatNumber ?? null,
+      })),
+    };
+  }
+
+  /** A flight the user entered in AirTrail by hand (not from Trips). */
+  addManual(owner: string, f: Record<string, unknown>): string {
+    const id = String(this.next++);
+    this.flights.set(id, { ...f, owner });
+    return id;
+  }
 
   count(method: string, prefix = '/api/v1/flights'): number {
     return this.calls.filter((c) => c.method === method && c.path.startsWith(prefix)).length;

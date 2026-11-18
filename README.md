@@ -32,7 +32,8 @@ Zeitleiste, Kalendereintrag und AirTrail-Flug, und Claude kann sie lesen und pfl
 - **Im Kalender** – ein geheimer Abo-Link pro Person für Apple-, Google- oder Outlook-Kalender:
   jede Reise als Ganztagstermin, dazu jeder Flug, jedes Check-in und jede Parkplatz-Ausfahrt.
 - **AirTrail füllt sich von allein** – Wer seinen AirTrail-API-Key hinterlegt, bekommt jeden Flug
-  automatisch in sein AirTrail, mit Sitzplatz. Ändert sich der Flug, ändert er sich dort mit.
+  automatisch in sein AirTrail, mit Sitzplatz. Ändert sich der Flug, ändert er sich dort mit. Flüge,
+  die schon in AirTrail stehen, werden erkannt statt verdoppelt.
 - **Claude & Co. reden mit** – Trips bringt einen MCP-Server mit: „Was steht nächste Woche an?“
   oder „Trag den Rückflug aus dieser Mail ein“ funktioniert direkt aus Claude.
 - **Für die Familie, nicht für alle Welt** – Jeder mit Zugang darf alle Reisen lesen; ändern dürfen
@@ -175,6 +176,21 @@ mitreist (oder alles, wenn du Admin bist). Die Werkzeuge: `list_trips`, `get_tri
 
 Alle Werte mit Erklärung stehen in [`.env.example`](.env.example).
 
+## AirTrail ohne Doppelungen
+
+Bevor Trips einen Flug in AirTrail anlegt, schaut es nach, ob du ihn dort schon hast: gleicher Tag,
+gleicher Start- und Zielflughafen, du als Passagier und – wenn beide eine haben – gleiche
+Flugnummer. Dann verknüpft Trips diesen Flug, statt einen zweiten anzulegen. Das hilft beim
+TripIt-Umzug genauso wie bei Flügen, die du früher von Hand eingetragen hast.
+
+Ändert sich der Flug in Trips, aktualisiert Trips ihn in AirTrail, ohne etwas wegzuwerfen: Kennzeichen,
+Gate, Terminal, Mitreisende ohne Trips-Konto und eine eigene Notiz aus AirTrail bleiben stehen. Hat
+Trips keinen Sitzplatz, bleibt der aus AirTrail. Steht ein AirTrail-Flug bei zwei Reisenden, löst das
+Entfernen eines Reisenden nur die Verknüpfung, der Flug bleibt.
+
+Ehrlich gesagt: Ein verknüpfter Flug gehört ab dann zu Trips. Löschst du den Eintrag in Trips (oder
+wird er storniert), verschwindet er auch aus AirTrail.
+
 ## Umzug von TripIt
 
 Hast du deine alten Reisen als TripIt-Dump (JSON mit `trips`, darin `flights`, `accommodations`,
@@ -190,9 +206,9 @@ Trips macht daraus:
 
 Reisende stehen im Dump nicht drin: Alle Reisen landen erst einmal bei dir, Mitreisende trägst du
 danach in der Reise ein. Reisen mit gleichem Titel und Startdatum werden übersprungen, ein zweiter
-Import schadet also nicht. **Achtung AirTrail:** Hast du schon einen AirTrail-Key hinterlegt, gehen
-auch alle importierten Flüge dorthin – stehen sie dort schon, hast du sie doppelt. Dann den Key erst
-nach dem Import eintragen und alte Flüge in AirTrail vorher aufräumen.
+Import schadet also nicht. **AirTrail:** Hast du einen AirTrail-Key hinterlegt, gehen die importierten Flüge auch dorthin –
+Flüge, die schon in deinem AirTrail stehen, werden dabei erkannt und nur verknüpft, nicht doppelt
+angelegt (siehe [AirTrail ohne Doppelungen](#airtrail-ohne-doppelungen)).
 
 Grenzen: Wo TripIt weder Ortszeit noch Flug kennt, nimmt Trips die Zeitzone des nächstgelegenen
 Flughafens der Reise oder Europe/Berlin. Halbe Hotelbuchungen (nur Check-in oder nur Check-out)

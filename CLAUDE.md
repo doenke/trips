@@ -36,6 +36,8 @@ pnpm-Monorepo: `apps/server` (Fastify 5, node:sqlite, TypeScript 7), `apps/web` 
 - `airports.ts` + `data/airport-zones.json` – IATA → IANA-Zone (mwgg/Airports, MIT). Flüge ohne Zone bekommen sie daraus.
 - `extract/claude.ts` – Structured Outputs (kein erzwungener Tool-Call: Sonnet 5.5 lehnt `tool_choice: tool` ab), PDFs als `document`-Blöcke.
 - `airtrail/` – API-v1-Client und serialisierte Sync-Queue (`TripHooks`), Fehler am Segment (`airtrail_error`).
+  Duplikatschutz: vor dem Anlegen `findExistingFlight` (Tag, Flughäfen, Passagier, Flugnummer) gegen die Flugliste
+  (gilt nur, solange die Queue läuft); PUT immer über `mergeForUpdate` (AirTrail-Felder und fremde Passagiere bleiben).
 - `auth/` – OIDC (openid-client v6), Sessions (signiertes Cookie, Hash in DB), Tokens (nur Hashes), Avatare.
 - `oauth/routes.ts` – OAuth 2.1 für MCP (DCR, PKCE, rotierende Refresh-Tokens). Redirect-Regeln: jede https-URI, http nur Loopback (beliebiger Port).
 - `ics.ts` – RFC 5545, UTC, Faltung. `time.ts` – lokale Zeit + IANA-Zone ↔ UTC (nur `Intl`).

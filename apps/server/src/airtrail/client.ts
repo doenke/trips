@@ -25,14 +25,59 @@ export interface Airline {
 export interface FlightBody {
   date: string;
   datePrecision: 'day';
-  departure?: string;
-  arrival?: string;
+  departure?: string | null;
+  arrival?: string | null;
   fromId: number | string;
   toId: number | string;
-  airlineId?: number | string;
-  flightNumber?: string;
-  note?: string;
-  passengers: { userId: string; seatNumber?: string }[];
+  airlineId?: number | string | null;
+  flightNumber?: string | null;
+  note?: string | null;
+  passengers: {
+    id?: number;
+    userId: string | null;
+    guestName?: string | null;
+    seat?: string | null;
+    seatNumber?: string | null;
+    seatClass?: string | null;
+    flightReason?: string | null;
+  }[];
+  [field: string]: unknown;
+}
+
+/** A flight as AirTrail returns it (only the fields Trips uses or must keep on update). */
+export interface AirTrailFlight {
+  id: number | string;
+  date: string;
+  datePrecision?: string | null;
+  departure?: string | null;
+  arrival?: string | null;
+  departureScheduled?: string | null;
+  arrivalScheduled?: string | null;
+  takeoffScheduled?: string | null;
+  takeoffActual?: string | null;
+  landingScheduled?: string | null;
+  landingActual?: string | null;
+  duration?: number | null;
+  departureTerminal?: string | null;
+  departureGate?: string | null;
+  arrivalTerminal?: string | null;
+  arrivalGate?: string | null;
+  flightNumber?: string | null;
+  aircraftReg?: string | null;
+  note?: string | null;
+  from: { id: number | string; iata: string | null; icao: string | null } | null;
+  to: { id: number | string; iata: string | null; icao: string | null } | null;
+  airline?: { id: number | string } | null;
+  aircraft?: { id: number | string } | null;
+  passengers: {
+    id?: number;
+    user: { id: string } | null;
+    guestName?: string | null;
+    seat?: string | null;
+    seatNumber?: string | null;
+    seatClass?: string | null;
+    flightReason?: string | null;
+  }[];
 }
 
 type Fetch = typeof fetch;
@@ -98,6 +143,26 @@ export class AirTrailClient {
     const hit = (r?.data ?? []).find((a) => a.iata?.toUpperCase() === c || a.icao?.toUpperCase() === c) ?? null;
     this.airlines.set(c, hit);
     return hit;
+  }
+
+  /** All flights of the key's user (scope "mine"), page by page. */
+  async listFlights(key: string): Promise<AirTrailFlight[]> {
+    const all: AirTrailFlight[] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < 200; page++) {
+      const q: string = `/api/v1/flights?scope=mine&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+      const r: { data?: AirTrailFlight[]; page?: { nextCursor?: string | null } } | null = await this.call(key, 'GET', q);
+      all.push(...(r?.data ?? []));
+      cursor = r?.page?.nextCursor ?? null;
+      if (!cursor) break;
+    }
+    return all;
+  }
+
+  async getFlight(key: string, id: string): Promise<AirTrailFlight> {
+    const r = await this.call<{ data?: AirTrailFlight }>(key, 'GET', `/api/v1/flights/${encodeURIComponent(id)}`);
+    if (!r?.data) throw new AirTrailError(404, 'Flug nicht gefunden');
+    return r.data;
   }
 
   async createFlight(key: string, body: FlightBody): Promise<string> {
