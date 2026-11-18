@@ -77,7 +77,7 @@ describe('moving a segment', () => {
     expect(ok.statusCode).toBe(200);
     const target = ok.json().trip;
     expect(target.segments.map((s: { id: string }) => s.id)).toEqual([flightId]);
-    expect(target.attachments.map((a: { filename: string; segment_id: string }) => [a.filename, a.segment_id])).toEqual([['Bordkarte.pdf', flightId]]);
+    expect(target.attachments.map((a: { filename: string; segment_ids: string[] }) => [a.filename, a.segment_ids])).toEqual([['Bordkarte.pdf', [flightId]]]);
     expect((await get(`/api/trips/${current}`, anna)).attachments).toEqual([]);
 
     const same = await post(`/api/segments/${flightId}/move`, anna, { trip_id: other });

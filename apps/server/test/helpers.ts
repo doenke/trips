@@ -198,6 +198,7 @@ export function seg(p: Partial<Extraction['segments'][number]> & { type: Extract
     address: null,
     notes: null,
     cancelled: false,
+    documents: [],
     ...p,
   };
 }

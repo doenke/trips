@@ -44,6 +44,8 @@ pnpm-Monorepo: `apps/server` (Fastify 5, node:sqlite, TypeScript 7), `apps/web` 
 - `oauth/routes.ts` – OAuth 2.1 für MCP (DCR, PKCE, rotierende Refresh-Tokens). Redirect-Regeln: jede https-URI, http nur Loopback (beliebiger Port).
 - `ics.ts` – RFC 5545, UTC, Faltung. `time.ts` – lokale Zeit + IANA-Zone ↔ UTC (nur `Intl`).
 - `db/migrations.ts` – Migrationen per `PRAGMA user_version`; nur anhängen, nie ändern.
+- Anhänge ↔ Einträge: viele-zu-viele über `attachment_segments` (die Spalte `attachments.segment_id` ist seit Migration 2 ungenutzt).
+  Beim Import liefert Claude pro Segment `documents` (PDF-Dateinamen); ohne Angabe hängt ein PDF an allen Segmenten der Buchung.
 - Web: `App.svelte` (Routing über `app.path`), `components/*`, `lib/timeline.ts` (Hotel/Parkplatz/Mietwagen doppelt),
   `public/sw.js` (Netz zuerst, 4 s, nie `/auth /oauth /mcp /ics /healthz`), Icons aus `public/icon.svg` per `pnpm --filter @trips/web icons`.
 

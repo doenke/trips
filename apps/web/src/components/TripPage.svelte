@@ -77,12 +77,14 @@
     }
   }
 
-  async function upload(event: Event) {
+  /** Upload to the trip, or – with segmentId – to one entry. */
+  async function upload(event: Event, segmentId?: string) {
     const input = event.currentTarget as HTMLInputElement;
     const files = input.files;
     if (!files?.length || !trip) return;
     uploading = true;
     const form = new FormData();
+    if (segmentId) form.set('segment_id', segmentId);
     for (const f of files) form.append('file', f, f.name);
     try {
       await api(`/api/trips/${trip.id}/attachments`, { method: 'POST', body: form });
@@ -101,6 +103,9 @@
     await del(`/api/attachments/${attachmentId}`).catch((err: Error) => toast(err.message));
     await refresh();
   }
+
+  const filesOf = (segmentId: string) => trip?.attachments.filter((a) => a.segment_ids.includes(segmentId)) ?? [];
+  const tripFiles = $derived(trip?.attachments.filter((a) => !a.segment_ids.length) ?? []);
 
   const nameOf = (userId: string) => trip?.travelers.find((u) => u.id === userId)?.name ?? app.users.find((u) => u.id === userId)?.name ?? '';
 </script>
@@ -157,17 +162,28 @@
         {#if s.seat}<div><span class="k">{s.type === 'hotel' ? 'Zimmer' : s.type === 'parking' ? 'Stellplatz' : 'Platz'}</span>{s.seat}</div>{/if}
         {#if s.address}<div><span class="k">Adresse</span><a href={mapsLink(s.address)} target="_blank" rel="noopener">{s.address} ↗</a></div>{/if}
         {#if s.notes}<div><span class="k">Notizen</span><span class="pre">{s.notes}</span></div>{/if}
-        {#each trip!.attachments.filter((a) => a.segment_id === s.id) as a (a.id)}
-          <div><span class="k">Anhang</span><a href={a.url} target="_blank" rel="noopener">📄 {a.filename}</a></div>
+        {#each filesOf(s.id) as a (a.id)}
+          <div>
+            <span class="k">Anhang</span>
+            <span class="file">
+              <a href={a.url} target="_blank" rel="noopener">{a.mime === 'application/pdf' ? '📄' : '🖼️'} {a.filename}</a>
+              <span class="small muted">{fileSize(a.size)}{a.segment_ids.length > 1 ? ` · auch bei ${a.segment_ids.length - 1} weiteren` : ''}</span>
+              {#if trip!.can_edit}<button class="icon ghost small-icon" aria-label="Anhang löschen" onclick={() => removeAttachment(a.id, a.filename)}>🗑</button>{/if}
+            </span>
+          </div>
         {/each}
         {#if s.type === 'flight' && s.airtrail.users.length}
           <div class="small muted">In AirTrail: {s.airtrail.users.map(nameOf).join(', ')}</div>
         {/if}
         {#if s.airtrail.error}<div class="small warn">Nicht an AirTrail übertragen: {s.airtrail.error}</div>{/if}
-        <div class="row spread small muted">
+        <div class="seg-foot small muted">
           <span>Quelle: {{ manual: 'von Hand', mail: 'Mail-Import', mcp: 'KI-Assistent', import: 'Import' }[s.source]}</span>
           {#if trip!.can_edit}
-            <span class="row">
+            <span class="seg-actions">
+              <label class="button chip" class:busy={uploading}>
+                📎 Anhang
+                <input type="file" accept="application/pdf,image/*" multiple hidden onchange={(e) => upload(e, s.id)} />
+              </label>
               <button class="chip" onclick={() => (moving = s)}>Verschieben</button>
               <button class="chip" onclick={() => (segmentForm = { segment: s })}>Bearbeiten</button>
             </span>
@@ -189,6 +205,7 @@
                 <span class="title">{e.title}</span>
                 {#if e.detail}<span class="detail small muted">{e.detail}</span>{/if}
               </span>
+              {#if filesOf(e.segment.id).length}<span class="clip" title="{filesOf(e.segment.id).length} Anhang/Anhänge">📎{filesOf(e.segment.id).length > 1 ? filesOf(e.segment.id).length : ''}</span>{/if}
               {#if e.segment.airtrail.error}<span class="dot" title="Nicht an AirTrail übertragen"></span>{/if}
             </button>
             {#if open[e.key]}{@render details(e.segment)}{/if}
@@ -212,10 +229,10 @@
       </ol>
     {/if}
 
-    {#if trip.attachments.length}
-      <p class="section-title">Anhänge</p>
+    {#if tripFiles.length}
+      <p class="section-title">Anhänge zur ganzen Reise</p>
       <div class="card list">
-        {#each trip.attachments as a (a.id)}
+        {#each tripFiles as a (a.id)}
           <div class="att">
             <a class="grow" href={a.url} target="_blank" rel="noopener">{a.mime === 'application/pdf' ? '📄' : '🖼️'} {a.filename}</a>
             <span class="small muted">{fileSize(a.size)}</span>
@@ -361,6 +378,33 @@
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+  }
+  .seg-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .seg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .clip {
+    flex: none;
+    font-size: 0.85rem;
+    color: var(--ink-3);
+  }
+  .file {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
+  .small-icon {
+    width: 32px;
+    min-height: 32px;
+    font-size: 0.95rem;
   }
   .dot {
     width: 8px;

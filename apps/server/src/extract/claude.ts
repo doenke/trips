@@ -29,6 +29,8 @@ export const ExtractionSchema = z.object({
       address: z.string().nullable(),
       notes: z.string().nullable(),
       cancelled: z.boolean(),
+      /** File names of the attached PDFs this segment is in (e-ticket, hotel voucher …). */
+      documents: z.array(z.string()),
     }),
   ),
 });
@@ -41,8 +43,8 @@ export type Extraction = z.infer<typeof ExtractionSchema>;
  */
 const wireSegment = z.object(
   Object.fromEntries(
-    Object.entries(ExtractionSchema.shape.segments.element.shape).map(([k, v]) => [k, k === 'type' || k === 'cancelled' ? v : z.string()]),
-  ) as { [K in keyof ExtractedSegmentShape]: K extends 'type' | 'cancelled' ? ExtractedSegmentShape[K] : z.ZodString },
+    Object.entries(ExtractionSchema.shape.segments.element.shape).map(([k, v]) => [k, k === 'type' || k === 'cancelled' || k === 'documents' ? v : z.string()]),
+  ) as { [K in keyof ExtractedSegmentShape]: K extends 'type' | 'cancelled' | 'documents' ? ExtractedSegmentShape[K] : z.ZodString },
 );
 type ExtractedSegmentShape = typeof ExtractionSchema.shape.segments.element.shape;
 export const WireSchema = z.object({
@@ -96,6 +98,7 @@ Rules:
 - booking_ref = booking code / PNR / confirmation number.
 - seat = seat(s), e.g. "12A" or "12A, 12B".
 - cancelled = true when the document cancels this segment. For a changed booking return the new data with cancelled = false.
+- documents = the file names (as given in the document titles) of the attached PDFs that contain this segment, e.g. the e-ticket for both flights, the hotel voucher for the hotel. Empty list if none or if the booking is only in the mail text.
 - passengers = names of all travellers exactly as written (e.g. "LINDNER/JOERG MR").
 - trip_title: a short German title for the trip, e.g. "Mallorca im Juli" or "Messe Berlin"; destination = main destination city or region.
 - Write trip_title, segment titles and notes in German.`;
@@ -128,6 +131,7 @@ export function claudeExtractor(opts: { apiKey: string; model: string }): Extrac
       source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: p.data.toString('base64') },
       title: p.filename,
     }));
+    if (input.pdfs.length) content.push({ type: 'text', text: `Attached PDF documents: ${input.pdfs.map((p) => `"${p.filename}"`).join(', ')}` });
     content.push({
       type: 'text',
       text: `Today is ${input.today}.\n${input.subject ? `Subject: ${input.subject}\n` : ''}\n${input.text.slice(0, 150_000) || '(no text, see the attached documents)'}`,

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sha256hex } from '../crypto.js';
 import type { Db } from '../db/index.js';
@@ -31,6 +31,35 @@ export class AttachmentService {
   ) {
     this.dir = join(dataDir, 'files');
     mkdirSync(this.dir, { recursive: true });
+    trips.copyAttachment = (a, tripId) => this.copyTo(a, tripId);
+  }
+
+  /** A copy of a file for another trip (moving one of several segments that share it). */
+  private copyTo(a: AttachmentRow, tripId: string): string {
+    const same = this.db.get<{ id: string }>('SELECT id FROM attachments WHERE trip_id = ? AND sha256 = ?', tripId, a.sha256);
+    if (same) return same.id;
+    const id = randomUUID();
+    copyFileSync(this.path(a.id), this.path(id));
+    this.db.run(
+      'INSERT INTO attachments (id, trip_id, filename, mime, size, sha256, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      id,
+      tripId,
+      a.filename,
+      a.mime,
+      a.size,
+      a.sha256,
+      a.created_by,
+      a.created_at,
+    );
+    return id;
+  }
+
+  /** Links an attachment to segments of its trip (in addition to existing links). */
+  private link(attachmentId: string, tripId: string, segmentIds: string[]): void {
+    for (const segmentId of new Set(segmentIds)) {
+      if (!this.db.get('SELECT 1 FROM segments WHERE id = ? AND trip_id = ?', segmentId, tripId)) throw notFound('Segment');
+      this.db.run('INSERT OR IGNORE INTO attachment_segments (attachment_id, segment_id) VALUES (?, ?)', attachmentId, segmentId);
+    }
   }
 
   path(id: string): string {
@@ -38,31 +67,40 @@ export class AttachmentService {
     return join(this.dir, id);
   }
 
-  add(actor: Actor, tripId: string, file: { filename: string; data: Buffer; segmentId?: string | null }): AttachmentRow {
+  /** Stores a PDF or picture in a trip; with segmentIds it belongs to those segments, without to the whole trip. */
+  add(actor: Actor, tripId: string, file: { filename: string; data: Buffer; segmentIds?: string[] }): AttachmentRow {
     if (!this.trips.canEdit(actor, tripId)) throw forbidden();
     if (file.data.length > MAX_ATTACHMENT_BYTES) throw badRequest('Die Datei ist zu groß (höchstens 20 MB).');
     const mime = sniffMime(file.data);
     if (!mime || !ALLOWED.test(mime)) throw badRequest('Nur PDFs und Bilder können angehängt werden.');
-    if (file.segmentId && !this.db.get('SELECT 1 FROM segments WHERE id = ? AND trip_id = ?', file.segmentId, tripId)) throw notFound('Segment');
+    const segmentIds = file.segmentIds ?? [];
+    for (const segmentId of segmentIds) if (!this.db.get('SELECT 1 FROM segments WHERE id = ? AND trip_id = ?', segmentId, tripId)) throw notFound('Segment');
     const sha = sha256hex(file.data);
-    // The same file twice (a booking mail forwarded again) is kept once.
+    // The same file twice (a booking mail forwarded again) is kept once – and also linked to the new segments.
     const same = this.db.get<AttachmentRow>('SELECT * FROM attachments WHERE trip_id = ? AND sha256 = ?', tripId, sha);
-    if (same) return same;
+    if (same) {
+      this.link(same.id, tripId, segmentIds);
+      return same;
+    }
     const id = randomUUID();
     const filename = file.filename.replace(/[\\/\0\r\n]/g, '_').slice(0, 200) || 'Anhang';
     writeFileSync(this.path(id), file.data);
     this.db.run(
-      'INSERT INTO attachments (id, trip_id, segment_id, filename, mime, size, sha256, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO attachments (id, trip_id, filename, mime, size, sha256, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
       id,
       tripId,
-      file.segmentId ?? null,
       filename,
       mime,
       file.data.length,
       sha,
       actor.userId,
     );
+    this.link(id, tripId, segmentIds);
     return this.db.get<AttachmentRow>('SELECT * FROM attachments WHERE id = ?', id)!;
+  }
+
+  segmentIds(attachmentId: string): string[] {
+    return this.db.all<{ segment_id: string }>('SELECT segment_id FROM attachment_segments WHERE attachment_id = ?', attachmentId).map((r) => r.segment_id);
   }
 
   /** Is exactly this file already attached to the trip? */

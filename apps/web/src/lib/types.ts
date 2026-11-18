@@ -35,7 +35,8 @@ export interface Segment {
 
 export interface Attachment {
   id: string;
-  segment_id: string | null;
+  /** The entries the file belongs to; empty = the whole trip. */
+  segment_ids: string[];
   filename: string;
   mime: string;
   size: number;

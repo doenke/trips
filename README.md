@@ -26,7 +26,9 @@ Zeitleiste, Kalendereintrag und AirTrail-Flug, und Claude kann sie lesen und pfl
   Umlaute und Reihenfolge egal.
 - **Eine Zeitleiste pro Reise** – nach Tagen sortiert, Zeiten immer in Ortszeit. Hotels mit
   Check-in und Check-out, Parkplätze mit 🅿️ Einfahrt und Ausfahrt am richtigen Tag.
-  Buchungsnummer antippen kopiert sie, Adresse antippen öffnet die Karten-App.
+  Buchungsnummer antippen kopiert sie, Adresse antippen öffnet die Karten-App. PDFs hängen an den
+  Einträgen, mit denen sie gekommen sind – das E-Ticket an beiden Flügen, der Hotelgutschein am Hotel
+  (📎 am Eintrag).
 - **Mail einfach reinziehen** – Die Buchungsmail aus Outlook, Apple Mail oder Thunderbird ins
   Browserfenster ziehen und loslassen. In einer offenen Reise landet sie dort, sonst sucht Trips
   die passende Reise selbst – samt PDF-Anhängen.
@@ -123,7 +125,12 @@ Karten-App, PDF zum Öffnen. Reisende können Einträge ergänzen, ändern, lös
 Hat Trips eine Buchung in die falsche Reise gesteckt – etwa den privaten Wochenendflug in die
 Dienstreise drei Tage vorher, weil beides in den fünf Tagen Spielraum liegt –, klapp den Eintrag auf
 und tippe **Verschieben**: in eine andere Reise oder in eine neue mit denselben Reisenden. Anhänge
-gehen mit, und die alte Reise schrumpft wieder auf ihre übrigen Einträge.
+gehen mit (teilen sich mehrere Einträge ein PDF, bekommt die neue Reise eine Kopie), und die alte
+Reise schrumpft wieder auf ihre übrigen Einträge.
+
+Anhänge gehören zu den Einträgen, mit denen sie gekommen sind: Claude sagt beim Import, in welchem
+PDF welcher Eintrag steht; weiß es das nicht, hängt das PDF an allen Einträgen dieser Buchung. Eigene
+Dateien hängst du mit **📎 Anhang** im aufgeklappten Eintrag an – oder oben an die ganze Reise.
 
 
 ### 4. Den Kalender abonnieren

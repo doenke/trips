@@ -51,6 +51,7 @@ describe('extraction schema for the Claude API', () => {
             start_local: '2026-11-23T16:50',
             start_tz: 'Europe/Berlin',
             cancelled: false,
+            documents: ['E-Ticket.pdf'],
           },
         ],
       }),

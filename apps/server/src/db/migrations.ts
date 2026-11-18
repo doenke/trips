@@ -126,4 +126,23 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX api_tokens_user ON api_tokens(user_id);
   `,
+  // 2: an attachment can belong to several segments (an e-ticket for outbound and return flight).
+  `
+  CREATE TABLE attachment_segments (
+    attachment_id TEXT NOT NULL REFERENCES attachments(id) ON DELETE CASCADE,
+    segment_id TEXT NOT NULL REFERENCES segments(id) ON DELETE CASCADE,
+    PRIMARY KEY (attachment_id, segment_id)
+  );
+  CREATE INDEX attachment_segments_segment ON attachment_segments(segment_id);
+  INSERT INTO attachment_segments (attachment_id, segment_id)
+    SELECT id, segment_id FROM attachments WHERE segment_id IS NOT NULL AND segment_id IN (SELECT id FROM segments);
+  -- Attachments that came with an import but hung on the whole trip: link them to the segments
+  -- created or updated in the same import (within ten seconds, same trip).
+  INSERT OR IGNORE INTO attachment_segments (attachment_id, segment_id)
+    SELECT a.id, s.id FROM attachments a JOIN segments s ON s.trip_id = a.trip_id
+    WHERE a.segment_id IS NULL
+      AND (abs(julianday(s.created_at) - julianday(a.created_at)) * 86400 < 10
+        OR abs(julianday(s.updated_at) - julianday(a.created_at)) * 86400 < 10);
+  UPDATE attachments SET segment_id = NULL;
+  `,
 ];

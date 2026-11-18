@@ -53,7 +53,14 @@ function tripMarkdown(t: TripView): string {
     ...(t.segments.length ? t.segments.map(segmentLine) : ['(noch keine)']),
   ].filter((l): l is string => typeof l === 'string');
   if (t.attachments.length)
-    lines.push('', '## Anhänge', ...t.attachments.map((a) => `- ${a.filename} (${a.mime}, ${Math.round(a.size / 1024)} KB) [attachment_id: ${a.id}]`));
+    lines.push(
+      '',
+      '## Anhänge',
+      ...t.attachments.map((a) => {
+        const at = a.segment_ids.map((id) => t.segments.find((x) => x.id === id)?.title).filter(Boolean);
+        return `- ${a.filename} (${a.mime}, ${Math.round(a.size / 1024)} KB)${at.length ? `, gehört zu: ${at.join(', ')}` : ', zur ganzen Reise'} [attachment_id: ${a.id}]`;
+      }),
+    );
   lines.push('', '## Details (JSON)', '```json', JSON.stringify(t.segments, null, 1), '```');
   return lines.join('\n');
 }
@@ -314,7 +321,7 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
           {
             id: a.id,
             trip_id: a.trip_id,
-            segment_id: a.segment_id,
+            segment_ids: s.attachments.segmentIds(a.id),
             filename: a.filename,
             mime: a.mime,
             size: a.size,

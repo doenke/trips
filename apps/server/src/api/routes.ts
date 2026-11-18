@@ -213,11 +213,9 @@ export async function apiRoutes(
       const m = await readMultipart(request);
       if (!m.files.length) throw badRequest('Keine Datei ausgewählt.');
       const rows = m.files.map((f) =>
-        s.attachments.add(actorOf(request), tripId, { filename: f.filename, data: f.data, segmentId: m.fields.segment_id || null }),
+        s.attachments.add(actorOf(request), tripId, { filename: f.filename, data: f.data, segmentIds: m.fields.segment_id ? [m.fields.segment_id] : [] }),
       );
-      return reply
-        .code(201)
-        .send(rows.map((a) => ({ id: a.id, filename: a.filename, mime: a.mime, size: a.size, segment_id: a.segment_id, url: `/api/attachments/${a.id}` })));
+      return reply.code(201).send(rows.map((a) => ({ id: a.id, filename: a.filename, mime: a.mime, size: a.size, url: `/api/attachments/${a.id}` })));
     });
 
     api.get('/api/attachments/:id', async (request, reply) => {

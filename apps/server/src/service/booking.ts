@@ -37,6 +37,16 @@ function formatLocal(v: string): string {
   return `${day}.${m}.${y}${t ? ` ${t}` : ''}`;
 }
 
+/** "E-Ticket.PDF" = "e-ticket.pdf" = "E-Ticket" – Claude doesn't always repeat file names exactly. */
+function sameFile(a: string, b: string): boolean {
+  const n = (v: string) =>
+    v
+      .trim()
+      .toLowerCase()
+      .replace(/\.pdf$/, '');
+  return n(a) === n(b);
+}
+
 /** Only the values the booking actually states – an update never erases data with nulls. */
 function patchFrom(input: SegmentInput): SegmentPatch {
   return Object.fromEntries(Object.entries(input).filter(([, v]) => v !== null && v !== undefined)) as SegmentPatch;
@@ -119,18 +129,19 @@ export class BookingService {
       result.trip_created = true;
     }
 
-    const touched: string[] = [];
+    // Segments of this booking, with the PDFs they are in (per Claude) – for linking the attachments.
+    const touched: { id: string; docs: string[] }[] = [];
     if (tripId) {
       for (const s of active) {
         const existing = findSame(this.trips.segments(tripId), s.input!);
         if (existing) {
           const updated = this.trips.updateSegment(actor, existing.id, patchFrom(s.input!));
           result.updated.push(label(updated));
-          touched.push(updated.id);
+          touched.push({ id: updated.id, docs: s.raw.documents ?? [] });
         } else {
           const created = this.trips.addSegment(actor, tripId, s.input!, opts.source);
           result.created.push(label(created));
-          touched.push(created.id);
+          touched.push({ id: created.id, docs: s.raw.documents ?? [] });
         }
       }
     }
@@ -163,10 +174,13 @@ export class BookingService {
     }
 
     for (const pdf of opts.pdfs ?? []) {
-      if (this.attachments.has(tripId, pdf.data)) continue; // same PDF again: already there
+      // A PDF belongs to the segments it contains; if Claude didn't say, to all segments it came with.
+      const named = touched.filter((t) => t.docs.some((d) => sameFile(d, pdf.filename)));
+      const segmentIds = (named.length ? named : touched).map((t) => t.id);
+      const already = this.attachments.has(tripId, pdf.data); // same PDF again: only new links, not listed
       try {
-        this.attachments.add(actor, tripId, { filename: pdf.filename, data: pdf.data, segmentId: touched.length === 1 ? touched[0] : null });
-        result.attachments.push(pdf.filename);
+        this.attachments.add(actor, tripId, { filename: pdf.filename, data: pdf.data, segmentIds });
+        if (!already) result.attachments.push(pdf.filename);
       } catch {
         /* not a PDF after all, or too large – the booking itself is in */
       }

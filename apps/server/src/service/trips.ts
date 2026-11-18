@@ -48,11 +48,13 @@ export interface SegmentRow {
 export interface AttachmentRow {
   id: string;
   trip_id: string;
+  /** Unused since migration 2 (see attachment_segments). */
   segment_id: string | null;
   filename: string;
   mime: string;
   size: number;
   sha256: string;
+  created_by: string | null;
   created_at: string;
 }
 
@@ -64,7 +66,8 @@ export interface SegmentView extends Omit<SegmentRow, 'airtrail_ids'> {
 
 export interface AttachmentView {
   id: string;
-  segment_id: string | null;
+  /** The segments the file belongs to; empty = the whole trip. */
+  segment_ids: string[];
   filename: string;
   mime: string;
   size: number;
@@ -232,9 +235,15 @@ export class TripService {
   }
 
   attachments(tripId: string): AttachmentView[] {
+    const links = new Map<string, string[]>();
+    for (const l of this.db.all<{ attachment_id: string; segment_id: string }>(
+      'SELECT l.attachment_id, l.segment_id FROM attachment_segments l JOIN attachments a ON a.id = l.attachment_id WHERE a.trip_id = ?',
+      tripId,
+    ))
+      links.set(l.attachment_id, [...(links.get(l.attachment_id) ?? []), l.segment_id]);
     return this.db.all<AttachmentRow>('SELECT * FROM attachments WHERE trip_id = ? ORDER BY created_at', tripId).map((a) => ({
       id: a.id,
-      segment_id: a.segment_id,
+      segment_ids: links.get(a.id) ?? [],
       filename: a.filename,
       mime: a.mime,
       size: a.size,
@@ -527,7 +536,7 @@ export class TripService {
         }).id;
       }
       this.db.run(`UPDATE segments SET trip_id = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, targetId, segmentId);
-      this.db.run('UPDATE attachments SET trip_id = ? WHERE segment_id = ?', targetId, segmentId);
+      this.moveAttachments(segmentId, targetId!);
       this.extendDates(targetId!);
       this.shrinkAfterMove(from, seg);
       this.touch(from.id);
@@ -537,6 +546,30 @@ export class TripService {
     this.hooks.segmentChanged(segmentId);
     return { segment: segmentView(this.requireSegment(segmentId)), trip: this.getTrip(actor, targetId!) };
   }
+
+  /**
+   * Attachments go along with a moved segment. One that other segments of the old trip still use
+   * stays there and the new trip gets its own copy (attachments belong to one trip).
+   */
+  private moveAttachments(segmentId: string, targetTripId: string): void {
+    for (const a of this.db.all<AttachmentRow>(
+      'SELECT a.* FROM attachments a JOIN attachment_segments l ON l.attachment_id = a.id WHERE l.segment_id = ?',
+      segmentId,
+    )) {
+      const shared = this.db.get('SELECT 1 FROM attachment_segments WHERE attachment_id = ? AND segment_id != ?', a.id, segmentId);
+      if (!shared) {
+        this.db.run('UPDATE attachments SET trip_id = ? WHERE id = ?', targetTripId, a.id);
+        continue;
+      }
+      if (!this.copyAttachment) throw new Error('copyAttachment not wired');
+      const copy = this.copyAttachment(a, targetTripId);
+      this.db.run('DELETE FROM attachment_segments WHERE attachment_id = ? AND segment_id = ?', a.id, segmentId);
+      this.db.run('INSERT OR IGNORE INTO attachment_segments (attachment_id, segment_id) VALUES (?, ?)', copy, segmentId);
+    }
+  }
+
+  /** Set by AttachmentService (files live there): copies a file into another trip, returns the new id. */
+  copyAttachment: ((a: AttachmentRow, tripId: string) => string) | null = null;
 
   /** Undo the stretching a moved segment caused: a boundary it defined moves back to the remaining segments. */
   private shrinkAfterMove(trip: TripRow, moved: SegmentRow): void {
