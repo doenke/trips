@@ -60,7 +60,7 @@ Rules:
 - booking_ref = booking code / PNR / confirmation number.
 - seat = seat(s), e.g. "12A" or "12A, 12B".
 - cancelled = true when the document cancels this segment. For a changed booking return the new data with cancelled = false.
-- passengers = names of all travellers exactly as written (e.g. "JACOBS/SOENKE MR").
+- passengers = names of all travellers exactly as written (e.g. "LINDNER/JOERG MR").
 - trip_title: a short German title for the trip, e.g. "Mallorca im Juli" or "Messe Berlin"; destination = main destination city or region.
 - Write trip_title, segment titles and notes in German.`;
 

@@ -22,7 +22,7 @@ Zeitleiste, Kalendereintrag und AirTrail-Flug, und Claude kann sie lesen und pfl
   in die passende Reise – oder legt eine neue an. Du bekommst eine kurze Mail, was passiert ist.
 - **Keine Dubletten, Stornos räumen auf** – Kommt die Umbuchung von LH 2010, wird der Eintrag
   aktualisiert statt verdoppelt. Kommt die Stornierung vom Parkplatz, verschwindet er.
-- **Mitreisende erkennt es selbst** – „JACOBS/ULLI MRS“ auf dem Ticket wird zu Ulli in Trips,
+- **Mitreisende erkennt es selbst** – „LINDNER/MIA MRS“ auf dem Ticket wird zu Mia in Trips,
   Umlaute und Reihenfolge egal.
 - **Eine Zeitleiste pro Reise** – nach Tagen sortiert, Zeiten immer in Ortszeit. Hotels mit
   Check-in und Check-out, Parkplätze mit 🅿️ Einfahrt und Ausfahrt am richtigen Tag.
@@ -92,7 +92,7 @@ Neu:
   • ✈️ EW 9580 DUS → PMI (04.07.2027 07:10)
   • ✈️ EW 9581 PMI → DUS (14.07.2027 10:15)
 
-Als Mitreisende eingetragen: Ulli
+Als Mitreisende eingetragen: Mia
 ```
 
 Fällt eine Buchung zeitlich in eine bestehende Reise (mit fünf Tagen Spielraum), landet sie dort.

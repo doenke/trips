@@ -38,34 +38,34 @@ describe('time zones', () => {
 
 describe('passenger names', () => {
   it('matches airline spellings', () => {
-    expect(namesMatch('JACOBS/SOENKE MR', 'Sönke Jacobs')).toBe(true);
-    expect(namesMatch('JACOBS/SONKE MR', 'Sönke Jacobs')).toBe(true);
-    expect(namesMatch('Jacobs, Sönke', 'Sönke Jacobs')).toBe(true);
-    expect(namesMatch('JACOBS/SOENKEMR', 'Sönke Jacobs')).toBe(true);
-    expect(namesMatch('Herr Sönke Jacobs', 'sönke jacobs')).toBe(true);
+    expect(namesMatch('LINDNER/JOERG MR', 'Jörg Lindner')).toBe(true);
+    expect(namesMatch('LINDNER/JORG MR', 'Jörg Lindner')).toBe(true);
+    expect(namesMatch('Lindner, Jörg', 'Jörg Lindner')).toBe(true);
+    expect(namesMatch('LINDNER/JOERGMR', 'Jörg Lindner')).toBe(true);
+    expect(namesMatch('Herr Jörg Lindner', 'jörg lindner')).toBe(true);
     expect(namesMatch('MÜLLER/ANNA MARIA MRS', 'Anna Müller')).toBe(true);
   });
 
   it('does not match different people', () => {
-    expect(namesMatch('JACOBS/ULLI MRS', 'Sönke Jacobs')).toBe(false);
-    expect(namesMatch('JACOBS', 'Sönke Jacobs')).toBe(false);
-    expect(namesMatch('MEIER/SOENKE MR', 'Sönke Jacobs')).toBe(false);
+    expect(namesMatch('LINDNER/MIA MRS', 'Jörg Lindner')).toBe(false);
+    expect(namesMatch('LINDNER', 'Jörg Lindner')).toBe(false);
+    expect(namesMatch('MEIER/JOERG MR', 'Jörg Lindner')).toBe(false);
   });
 
   it('picks the matching users', () => {
     const users = [
-      { id: '1', name: 'Sönke Jacobs' },
-      { id: '2', name: 'Ulli Jacobs' },
+      { id: '1', name: 'Jörg Lindner' },
+      { id: '2', name: 'Mia Lindner' },
       { id: '3', name: 'Anna Müller' },
     ];
-    expect(matchPassengers(['JACOBS/SOENKE MR', 'JACOBS/ULLI MRS'], users).map((u) => u.id)).toEqual(['1', '2']);
+    expect(matchPassengers(['LINDNER/JOERG MR', 'LINDNER/MIA MRS'], users).map((u) => u.id)).toEqual(['1', '2']);
   });
 });
 
 describe('trip matching', () => {
   const trips = [
     { id: 'a', start_date: '2026-07-01', end_date: '2026-07-10', travelerIds: ['me'] },
-    { id: 'b', start_date: '2026-07-03', end_date: '2026-07-08', travelerIds: ['me', 'ulli'] },
+    { id: 'b', start_date: '2026-07-03', end_date: '2026-07-08', travelerIds: ['me', 'mia'] },
     { id: 'c', start_date: '2026-09-01', end_date: '2026-09-05', travelerIds: ['me'] },
     { id: 'd', start_date: '2026-07-01', end_date: '2026-07-10', travelerIds: ['someone'] },
   ];
@@ -78,7 +78,7 @@ describe('trip matching', () => {
   });
 
   it('prefers shared travelers, then the closest trip', () => {
-    expect(pickTrip(trips, '2026-07-05', '2026-07-05', ['me', 'ulli'], 5)?.id).toBe('b');
+    expect(pickTrip(trips, '2026-07-05', '2026-07-05', ['me', 'mia'], 5)?.id).toBe('b');
     expect(pickTrip(trips, '2026-07-05', '2026-07-05', ['me'], 5)?.id).toBe('a');
     expect(pickTrip(trips, '2026-07-05', '2026-07-05', ['nobody'], 5)).toBeNull();
   });

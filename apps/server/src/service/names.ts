@@ -1,6 +1,6 @@
 /**
  * Tolerant matching of passenger names from bookings against account names:
- * "JACOBS/SOENKE MR" = "Sönke Jacobs" = "Jacobs, Sönke" = "Sonke Jacobs".
+ * "LINDNER/JOERG MR" = "Jörg Lindner" = "Lindner, Jörg" = "Jorg Lindner".
  */
 
 const TITLES = new Set(['mr', 'mrs', 'ms', 'miss', 'mstr', 'mister', 'dr', 'prof', 'herr', 'frau', 'hr', 'fr', 'chd', 'inf', 'adt']);
@@ -20,7 +20,7 @@ function variants(name: string): [string[], string[]] {
   return [tokens(spelled), tokens(lower)];
 }
 
-/** "SOENKEMR" (title glued to the first name in some PNRs) → "soenke". */
+/** "JOERGMR" (title glued to the first name in some PNRs) → "joerg". */
 function stripGluedTitle(token: string): string {
   for (const s of TITLE_SUFFIXES) if (token.length > s.length + 1 && token.endsWith(s)) return token.slice(0, -s.length);
   return token;
