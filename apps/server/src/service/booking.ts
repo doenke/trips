@@ -163,6 +163,7 @@ export class BookingService {
     }
 
     for (const pdf of opts.pdfs ?? []) {
+      if (this.attachments.has(tripId, pdf.data)) continue; // same PDF again: already there
       try {
         this.attachments.add(actor, tripId, { filename: pdf.filename, data: pdf.data, segmentId: touched.length === 1 ? touched[0] : null });
         result.attachments.push(pdf.filename);

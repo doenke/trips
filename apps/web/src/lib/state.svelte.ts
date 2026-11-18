@@ -8,6 +8,10 @@ export const app = $state({
   online: typeof navigator === 'undefined' ? true : navigator.onLine,
   toast: '' as string,
   path: typeof location === 'undefined' ? '/' : location.pathname,
+  /** The trip on screen, so a dropped booking lands in it (if the user may edit it). */
+  dropTrip: null as { id: string; canEdit: boolean } | null,
+  /** Bumped after an import, so the open trip reloads. */
+  importTick: 0,
 });
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;

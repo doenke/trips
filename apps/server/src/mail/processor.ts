@@ -55,7 +55,7 @@ export function dmarcResult(mail: ParsedMail): 'pass' | 'fail' | 'none' {
 }
 
 /** Text and PDFs of a mail, including mails attached as message/rfc822 (forwarded "as attachment"). */
-async function collect(mail: ParsedMail, depth = 0): Promise<BookingDocument> {
+export async function collect(mail: ParsedMail, depth = 0): Promise<BookingDocument> {
   const text = mail.text?.trim() || (mail.html ? htmlToText(mail.html) : '');
   const doc: BookingDocument = { text, subject: mail.subject ?? null, pdfs: [] };
   for (const a of mail.attachments) {

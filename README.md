@@ -27,8 +27,11 @@ Zeitleiste, Kalendereintrag und AirTrail-Flug, und Claude kann sie lesen und pfl
 - **Eine Zeitleiste pro Reise** – nach Tagen sortiert, Zeiten immer in Ortszeit. Hotels mit
   Check-in und Check-out, Parkplätze mit 🅿️ Einfahrt und Ausfahrt am richtigen Tag.
   Buchungsnummer antippen kopiert sie, Adresse antippen öffnet die Karten-App.
-- **Buchung einfügen** – Text aus einer Mail oder ein PDF direkt in eine Reise werfen, gleiche
-  Auswertung wie beim Mail-Import.
+- **Mail einfach reinziehen** – Die Buchungsmail aus Outlook, Apple Mail oder Thunderbird ins
+  Browserfenster ziehen und loslassen. In einer offenen Reise landet sie dort, sonst sucht Trips
+  die passende Reise selbst – samt PDF-Anhängen.
+- **Buchung einfügen** – Text aus einer Mail, die Mail als Datei (.eml, .msg) oder ein PDF direkt
+  in eine Reise werfen, gleiche Auswertung wie beim Mail-Import.
 - **Im Kalender** – ein geheimer Abo-Link pro Person für Apple-, Google- oder Outlook-Kalender:
   jede Reise als Ganztagstermin, dazu jeder Flug, jedes Check-in und jede Parkplatz-Ausfahrt.
 - **AirTrail füllt sich von allein** – Wer seinen AirTrail-API-Key hinterlegt, bekommt jeden Flug
@@ -96,6 +99,14 @@ Als Mitreisende eingetragen: Mia
 ```
 
 Fällt eine Buchung zeitlich in eine bestehende Reise (mit fünf Tagen Spielraum), landet sie dort.
+
+**Noch schneller:** Zieh die Mail direkt aus deinem Mailprogramm ins Browserfenster mit Trips. Eine
+gestrichelte Fläche zeigt „Buchung hier ablegen“; loslassen, und nach ein paar Sekunden steht die
+Zusammenfassung da. Das klappt mit dem klassischen Outlook unter Windows in Edge und Chrome (die
+Mail kommt als `.msg`), mit Outlook für Mac, Apple Mail und Thunderbird (als `.eml`) und mit PDFs.
+Weitergeleitete Mails im Anhang und deren PDFs liest Trips mit. Ehrlich gesagt: Aus dem neuen
+Outlook für Windows und aus Outlook im Web lässt sich eine Mail meist nicht als Datei
+herausziehen – dort die Mail weiterleiten oder erst als Datei speichern.
 
 ### 3. Die Reise ansehen
 

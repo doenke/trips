@@ -28,7 +28,22 @@
       error = (err as Error).message;
     }
   }
-  onMount(refresh);
+  onMount(() => {
+    void refresh();
+    return () => (app.dropTrip = null);
+  });
+
+  // A booking dropped while this trip is open lands here (DropImport); reload afterwards.
+  $effect(() => {
+    app.dropTrip = trip ? { id: trip.id, canEdit: trip.can_edit } : null;
+  });
+  let seenTick = app.importTick;
+  $effect(() => {
+    if (app.importTick !== seenTick) {
+      seenTick = app.importTick;
+      void refresh();
+    }
+  });
 
   // Pick up AirTrail results that arrive a moment after saving.
   $effect(() => {

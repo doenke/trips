@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import DropImport from './components/DropImport.svelte';
   import Home from './components/Home.svelte';
   import Login from './components/Login.svelte';
   import Settings from './components/Settings.svelte';
@@ -61,5 +62,7 @@
 {:else}
   <Home creating={tripId === 'new'} />
 {/if}
+
+{#if app.me}<DropImport />{/if}
 
 {#if app.toast}<div class="toast" role="status">{app.toast}</div>{/if}

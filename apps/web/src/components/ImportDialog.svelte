@@ -34,14 +34,14 @@
     <pre class="summary">{result.summary}</pre>
   {:else}
     <form id="import-form" onsubmit={submit} class="stack">
-      <p class="muted small">Text einer Buchungsbestätigung einfügen oder das PDF wählen. Claude liest die Buchung aus, die Einträge landen direkt in dieser Reise – Doppeltes wird aktualisiert, Stornos gelöscht.</p>
+      <p class="muted small">Text einer Buchungsbestätigung einfügen, die E-Mail oder das PDF wählen. Claude liest die Buchung aus, die Einträge landen direkt in dieser Reise – Doppeltes wird aktualisiert, Stornos gelöscht. Tipp: Du kannst die Mail auch einfach aus Outlook ins Fenster ziehen.</p>
       <div class="field">
         <label for="imp-text">Buchungstext</label>
         <textarea id="imp-text" bind:value={text} rows="8" placeholder="Bestätigungsmail hier einfügen …"></textarea>
       </div>
       <div class="field">
-        <label for="imp-file">oder PDF</label>
-        <input id="imp-file" type="file" accept="application/pdf" onchange={(e) => (file = (e.currentTarget as HTMLInputElement).files?.[0] ?? null)} />
+        <label for="imp-file">oder E-Mail (.eml, .msg) bzw. PDF</label>
+        <input id="imp-file" type="file" accept=".pdf,.eml,.msg,application/pdf,message/rfc822,application/vnd.ms-outlook" onchange={(e) => (file = (e.currentTarget as HTMLInputElement).files?.[0] ?? null)} />
       </div>
       {#if busy}<p class="notice">Claude liest die Buchung … das dauert ein paar Sekunden.</p>{/if}
       {#if error}<p class="error">{error}</p>{/if}

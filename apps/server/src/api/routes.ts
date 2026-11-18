@@ -3,7 +3,8 @@ import type { MultipartFile } from '@fastify/multipart';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Services } from '../app.js';
-import { summarize } from '../service/booking.js';
+import { documentFromFiles } from '../mail/documents.js';
+import { type BookingDocument, summarize } from '../service/booking.js';
 import { AppError, badRequest } from '../service/errors.js';
 import { SegmentInput, SegmentPatch, TripInput, TripPatch } from '../service/schemas.js';
 import { assertAdmin, publicUser } from '../service/users.js';
@@ -179,18 +180,16 @@ export async function apiRoutes(
     const importHandler = async (request: FastifyRequest, tripId?: string) => {
       const actor = actorOf(request);
       if (tripId && !s.trips.canEdit(actor, tripId)) s.trips.getTrip(actor, tripId); // 404 before 403
-      let text = '';
-      let pdfs: { filename: string; data: Buffer }[] = [];
+      let doc: BookingDocument;
       if (request.isMultipart()) {
+        // Text, PDFs and mails (.eml, Outlook .msg) – e.g. dragged from the mail program into the app.
         const m = await readMultipart(request);
-        text = m.fields.text ?? '';
-        pdfs = m.files.filter((f) => f.data.subarray(0, 5).toString('latin1') === '%PDF-');
-        if (m.files.length && !pdfs.length) throw badRequest('Bitte ein PDF hochladen.');
+        doc = await documentFromFiles(m.files, m.fields.text ?? '');
       } else {
-        text = z.object({ text: z.string().max(200_000) }).parse(request.body).text;
+        doc = { text: z.object({ text: z.string().max(200_000) }).parse(request.body).text, pdfs: [] };
       }
-      if (text.trim().length < 20 && !pdfs.length) throw badRequest('Bitte den Buchungstext einfügen oder ein PDF auswählen.');
-      const result = await s.booking.importDocument(actor, { text, pdfs }, { tripId, source: 'manual' });
+      if (doc.text.trim().length < 20 && !doc.pdfs.length) throw badRequest('Bitte den Buchungstext einfügen oder eine E-Mail bzw. ein PDF auswählen.');
+      const result = await s.booking.importDocument(actor, doc, { tripId, source: 'manual' });
       return { ...result, summary: summarize(result) };
     };
     api.post('/api/trips/:id/import', async (request) => importHandler(request, Id.parse(request.params).id));

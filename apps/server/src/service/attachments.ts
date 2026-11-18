@@ -65,6 +65,11 @@ export class AttachmentService {
     return this.db.get<AttachmentRow>('SELECT * FROM attachments WHERE id = ?', id)!;
   }
 
+  /** Is exactly this file already attached to the trip? */
+  has(tripId: string, data: Buffer): boolean {
+    return !!this.db.get('SELECT 1 FROM attachments WHERE trip_id = ? AND sha256 = ?', tripId, sha256hex(data));
+  }
+
   /** Every signed-in user may read. */
   get(id: string): AttachmentRow {
     const a = this.db.get<AttachmentRow>('SELECT * FROM attachments WHERE id = ?', id);

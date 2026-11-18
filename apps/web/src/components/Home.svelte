@@ -39,6 +39,7 @@
 
   $effect(() => {
     save('mine', mine);
+    void app.importTick; // reload after a dropped booking
     void refresh();
   });
 
@@ -84,7 +85,7 @@
       <h2>Noch keine kommende Reise</h2>
       <p class="muted">
         Leg eine Reise an – oder leite einfach eine Buchungsbestätigung
-        {#if app.me?.import_address}an <strong>{app.me.import_address}</strong>{:else}an das Import-Postfach{/if} weiter. Trips sortiert sie selbst ein.
+        {#if app.me?.import_address}an <strong>{app.me.import_address}</strong>{:else}an das Import-Postfach{/if} weiter – oder zieh die Mail direkt aus Outlook in dieses Fenster. Trips sortiert sie selbst ein.
       </p>
     </div>
   {:else}
