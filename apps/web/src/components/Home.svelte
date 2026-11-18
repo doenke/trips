@@ -14,6 +14,25 @@
   let past = $state<TripSummary[] | null>(null);
   let pastOpen = $state(false);
   let error = $state('');
+  let query = $state('');
+  let results = $state<TripSummary[] | null>(null);
+
+  // Search across all trips (past ones too) – on the server, which also looks into every booking.
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    const q = query.trim();
+    const onlyMine = mine;
+    void app.importTick;
+    clearTimeout(searchTimer);
+    if (!q) {
+      results = null;
+      return;
+    }
+    searchTimer = setTimeout(async () => {
+      results = await get<TripSummary[]>(`/api/trips?filter=all&mine=${onlyMine}&q=${encodeURIComponent(q)}`).catch(() => []);
+    }, 250);
+    return () => clearTimeout(searchTimer);
+  });
 
   async function refresh() {
     error = '';
@@ -76,9 +95,38 @@
     <a class="button primary" href="/trips/new" onclick={link}>＋ Neue Reise</a>
   </div>
 
+  <div class="search">
+    <input
+      type="search"
+      bind:value={query}
+      placeholder="Reisen durchsuchen – Ort, Hotel, Flugnummer, Buchungsnummer …"
+      aria-label="Reisen durchsuchen"
+      onkeydown={(e) => e.key === 'Escape' && (query = '')}
+    />
+  </div>
+
   {#if error}<p class="error" style="margin-top:16px">{error}</p>{/if}
 
-  {#if upcoming === null}
+  {#if query.trim()}
+    <p class="section-title">Suchergebnisse</p>
+    {#if results === null}
+      <p class="muted small">Sucht …</p>
+    {:else if !results.length}
+      <p class="muted">Nichts gefunden{mine ? ' in deinen Reisen – vielleicht unter „Alle“?' : '.'}</p>
+    {:else}
+      <div class="list card">
+        {#each results as t (t.id)}
+          <a class="item" href="/trips/{t.id}" onclick={link}>
+            <div class="grow">
+              <div class="item-title">{t.title}</div>
+              <div class="small muted">{[t.destination, dateRange(t.start_date, t.end_date)].filter(Boolean).join(' · ')}</div>
+            </div>
+            <Avatars users={t.travelers} size={22} />
+          </a>
+        {/each}
+      </div>
+    {/if}
+  {:else if upcoming === null}
     <p class="muted" style="margin-top:24px">Lädt …</p>
   {:else if !next}
     <div class="card pad empty">
@@ -127,6 +175,7 @@
     {/if}
   {/if}
 
+  {#if !query.trim()}
   <details class="past" ontoggle={togglePast}>
     <summary class="section-title">Vergangene Reisen</summary>
     {#if past === null}
@@ -150,6 +199,7 @@
       {/each}
     {/if}
   </details>
+  {/if}
 </div>
 
 {#if creating}
@@ -162,6 +212,14 @@
 <style>
   .me {
     display: inline-flex;
+  }
+  .search {
+    margin-top: 12px;
+  }
+  .search input {
+    border-radius: 999px;
+    padding-left: 16px;
+    background: var(--card);
   }
   .empty {
     margin-top: 24px;

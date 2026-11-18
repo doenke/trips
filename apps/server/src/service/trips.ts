@@ -95,6 +95,24 @@ export interface TripHooks {
 
 const noHooks: TripHooks = { segmentChanged() {}, segmentRemoved() {}, travelersChanged() {} };
 
+/** Lowercase, umlauts written out and stripped alike ("Düsseldorf" finds "Dusseldorf" and "Duesseldorf"). */
+function searchText(v: string): string {
+  const lower = v.toLowerCase();
+  const spelled = lower.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+  const stripped = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return `${spelled} ${stripped}`;
+}
+
+function searchWords(q: string): string[] {
+  return q
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
 export const TYPE_LABEL: Record<SegmentType, string> = {
   flight: 'Flug',
   train: 'Zug',
@@ -236,14 +254,19 @@ export class TripService {
     };
   }
 
-  /** upcoming = not over yet (end today or later), past = over. Sorted by start; past ones newest first. */
-  listTrips(actor: Actor, opts: { filter?: 'upcoming' | 'past' | 'all'; mine?: boolean; now?: Date } = {}): TripSummary[] {
+  /**
+   * upcoming = not over yet (end today or later), past = over. Sorted by start; past ones newest first.
+   * query searches title, destination, notes and every segment (titles, numbers, places, airport codes,
+   * booking numbers); all words must match, case and umlauts don't matter. Results: newest first.
+   */
+  listTrips(actor: Actor, opts: { filter?: 'upcoming' | 'past' | 'all'; mine?: boolean; now?: Date; query?: string } = {}): TripSummary[] {
     const filter = opts.filter ?? 'all';
     const today = todayIn(this.opts.timeZone ?? 'Europe/Berlin', opts.now);
     const rows = opts.mine
       ? this.db.all<TripRow>('SELECT t.* FROM trips t JOIN trip_travelers x ON x.trip_id = t.id WHERE x.user_id = ?', actor.userId)
       : this.db.all<TripRow>('SELECT * FROM trips');
     const nowIso = (opts.now ?? new Date()).toISOString();
+    const words = searchWords(opts.query ?? '');
     const result = rows
       .filter((t) => {
         if (filter === 'all') return true;
@@ -251,14 +274,32 @@ export class TripService {
         const upcoming = !end || end >= today;
         return filter === 'upcoming' ? upcoming : !upcoming;
       })
+      .filter((t) => !words.length || this.matches(t, words))
       .map((t) => {
         const segs = this.segments(t.id);
         const next = segs.find((s) => (s.end_utc ?? s.start_utc ?? '') >= nowIso) ?? null;
         return { ...t, travelers: this.travelers(t.id), can_edit: this.canEdit(actor, t.id), segment_count: segs.length, next_segment: next };
       });
     result.sort((a, b) => (a.start_date ?? '9999').localeCompare(b.start_date ?? '9999'));
-    if (filter === 'past') result.reverse();
+    if (filter === 'past' || words.length) result.reverse();
     return result;
+  }
+
+  private matches(t: TripRow, words: string[]): boolean {
+    const segs = this.db.all<SegmentRow>('SELECT * FROM segments WHERE trip_id = ?', t.id);
+    const haystack = searchText(
+      [
+        t.title,
+        t.destination,
+        t.notes,
+        ...segs.flatMap((s) => [s.title, s.number, s.carrier, s.from_name, s.from_code, s.to_name, s.to_code, s.booking_ref, s.address, s.notes]),
+      ]
+        .filter(Boolean)
+        .join(' '),
+    );
+    // Numbers like "LH2010" also match "LH 2010".
+    const compact = haystack.replace(/\s+/g, '');
+    return words.every((w) => haystack.includes(w) || compact.includes(w.replace(/\s+/g, '')));
   }
 
   /** Trips (with dates) on which any of the given users travels – candidates for matching. */
@@ -457,6 +498,64 @@ export class TripService {
     this.db.run('DELETE FROM segments WHERE id = ?', segmentId);
     this.touch(s.trip_id);
     this.hooks.segmentRemoved(s);
+  }
+
+  /**
+   * Moves a segment (with its attachments) into another trip, or into a new one with the same
+   * travelers. The old trip shrinks back where only this segment had stretched it.
+   */
+  moveSegment(actor: Actor, segmentId: string, to: { tripId?: string; newTripTitle?: string }): { segment: SegmentView; trip: TripView } {
+    const seg = this.requireSegment(segmentId);
+    const from = this.requireEditable(actor, seg.trip_id);
+    if (!to.tripId && !to.newTripTitle?.trim()) throw badRequest('Bitte eine Reise wählen oder einen Titel für die neue Reise angeben.');
+    if (to.tripId === from.id) throw badRequest('Der Eintrag ist schon in dieser Reise.');
+    let targetId = to.tripId ?? null;
+    this.db.tx(() => {
+      if (targetId) this.requireEditable(actor, targetId);
+      else {
+        const dates = [seg.start_local, seg.end_local]
+          .filter((d): d is string => !!d)
+          .map((d) => d.slice(0, 10))
+          .sort();
+        targetId = this.createTrip(actor, {
+          title: to.newTripTitle!.trim().slice(0, 200),
+          destination: null,
+          start_date: dates[0] ?? null,
+          end_date: dates.at(-1) ?? null,
+          notes: null,
+          traveler_ids: this.travelerIds(from.id),
+        }).id;
+      }
+      this.db.run(`UPDATE segments SET trip_id = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, targetId, segmentId);
+      this.db.run('UPDATE attachments SET trip_id = ? WHERE segment_id = ?', targetId, segmentId);
+      this.extendDates(targetId!);
+      this.shrinkAfterMove(from, seg);
+      this.touch(from.id);
+      this.touch(targetId!);
+    });
+    // Travelers may differ: AirTrail follows the new trip.
+    this.hooks.segmentChanged(segmentId);
+    return { segment: segmentView(this.requireSegment(segmentId)), trip: this.getTrip(actor, targetId!) };
+  }
+
+  /** Undo the stretching a moved segment caused: a boundary it defined moves back to the remaining segments. */
+  private shrinkAfterMove(trip: TripRow, moved: SegmentRow): void {
+    const remaining = this.db
+      .all<{ d: string | null }>(
+        'SELECT substr(start_local, 1, 10) AS d FROM segments WHERE trip_id = ? UNION ALL SELECT substr(end_local, 1, 10) FROM segments WHERE trip_id = ?',
+        trip.id,
+        trip.id,
+      )
+      .map((r) => r.d)
+      .filter((d): d is string => !!d)
+      .sort();
+    if (!remaining.length || !trip.start_date || !trip.end_date) return;
+    const movedDates = [moved.start_local, moved.end_local].filter((d): d is string => !!d).map((d) => d.slice(0, 10));
+    let start = trip.start_date;
+    let end = trip.end_date;
+    if (movedDates.includes(start) && remaining[0]! > start) start = remaining[0]!;
+    if (movedDates.includes(end) && remaining.at(-1)! < end) end = remaining.at(-1)!;
+    if (start !== trip.start_date || end !== trip.end_date) this.db.run('UPDATE trips SET start_date = ?, end_date = ? WHERE id = ?', start, end, trip.id);
   }
 
   private touch(tripId: string): void {

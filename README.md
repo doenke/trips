@@ -30,6 +30,10 @@ Zeitleiste, Kalendereintrag und AirTrail-Flug, und Claude kann sie lesen und pfl
 - **Mail einfach reinziehen** – Die Buchungsmail aus Outlook, Apple Mail oder Thunderbird ins
   Browserfenster ziehen und loslassen. In einer offenen Reise landet sie dort, sonst sucht Trips
   die passende Reise selbst – samt PDF-Anhängen.
+- **Falsch einsortiert? Verschieben** – Hat der Import eine Buchung der falschen Reise zugeordnet,
+  schiebst du den Eintrag mit „Verschieben“ in eine andere oder eine neue Reise – samt Anhängen.
+- **Alles wiederfinden** – Das Suchfeld auf der Startseite durchsucht alle Reisen, auch die alten:
+  Ort, Hotel, Flugnummer, Flughafencode oder Buchungsnummer.
 - **Buchung einfügen** – Text aus einer Mail, die Mail als Datei (.eml, .msg) oder ein PDF direkt
   in eine Reise werfen, gleiche Auswertung wie beim Mail-Import.
 - **Im Kalender** – ein geheimer Abo-Link pro Person für Apple-, Google- oder Outlook-Kalender:
@@ -115,6 +119,12 @@ Auf der Startseite steht die nächste Reise groß mit Countdown und dem nächste
 tippst du einen Eintrag an, um Details zu sehen: Buchungsnummer zum Kopieren, Adresse für die
 Karten-App, PDF zum Öffnen. Reisende können Einträge ergänzen, ändern, löschen oder mit
 **Buchung einfügen** einen Text oder ein PDF auswerten lassen.
+
+Hat Trips eine Buchung in die falsche Reise gesteckt – etwa den privaten Wochenendflug in die
+Dienstreise drei Tage vorher, weil beides in den fünf Tagen Spielraum liegt –, klapp den Eintrag auf
+und tippe **Verschieben**: in eine andere Reise oder in eine neue mit denselben Reisenden. Anhänge
+gehen mit, und die alte Reise schrumpft wieder auf ihre übrigen Einträge.
+
 
 ### 4. Den Kalender abonnieren
 

@@ -94,11 +94,18 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
       inputSchema: {
         filter: z.enum(['upcoming', 'past', 'all']).default('upcoming').describe('upcoming = noch nicht vorbei, past = vorbei, all = alle'),
         mine: z.boolean().default(false).describe('true = nur Reisen, auf denen du selbst reist'),
+        query: z
+          .string()
+          .max(200)
+          .optional()
+          .describe(
+            'Suchbegriffe, z. B. "Wien", "LH 2010" oder eine Buchungsnummer – durchsucht Titel, Ziel, Notizen und alle Einträge; alle Wörter müssen passen',
+          ),
       },
       annotations: read,
     },
-    guard(({ filter, mine }: { filter: 'upcoming' | 'past' | 'all'; mine: boolean }) => {
-      const list = s.trips.listTrips(actor, { filter, mine });
+    guard(({ filter, mine, query }: { filter: 'upcoming' | 'past' | 'all'; mine: boolean; query?: string }) => {
+      const list = s.trips.listTrips(actor, { filter: query ? 'all' : filter, mine, query });
       return text(list.length ? list.map(tripLine).join('\n') : 'Keine Reisen gefunden.');
     }),
   );
@@ -189,6 +196,26 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
       const { segment_id, ...patch } = args;
       const seg = s.trips.updateSegment(actor, segment_id, z.object(segmentFields).partial().parse(patch));
       return text(`Aktualisiert: ${segmentLine(seg)}`);
+    }),
+  );
+
+  server.registerTool(
+    'move_segment',
+    {
+      title: 'Segment verschieben',
+      description:
+        'Verschiebt ein Segment (mit seinen Anhängen) in eine andere Reise (trip_id) oder in eine neue Reise (new_trip_title, gleiche Reisende wie bisher). Nützlich, wenn der Import eine Buchung der falschen Reise zugeordnet hat.',
+      inputSchema: {
+        segment_id: z.string(),
+        trip_id: z.string().optional().describe('Zielreise'),
+        new_trip_title: z.string().max(200).optional().describe('Stattdessen: Titel einer neuen Reise'),
+      },
+      annotations: write,
+    },
+    guard(({ segment_id, trip_id, new_trip_title }: { segment_id: string; trip_id?: string; new_trip_title?: string }) => {
+      if (!!trip_id === !!new_trip_title) return { ...text('Bitte entweder trip_id oder new_trip_title angeben.'), isError: true };
+      const r = s.trips.moveSegment(actor, segment_id, { tripId: trip_id, newTripTitle: new_trip_title });
+      return text(`Verschoben nach „${r.trip.title}“ [trip_id: ${r.trip.id}]: ${segmentLine(r.segment)}`);
     }),
   );
 

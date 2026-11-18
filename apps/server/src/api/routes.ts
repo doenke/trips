@@ -139,9 +139,13 @@ export async function apiRoutes(
 
     api.get('/api/trips', async (request) => {
       const q = z
-        .object({ filter: z.enum(['upcoming', 'past', 'all']).default('all'), mine: z.enum(['true', 'false', '1', '0']).optional() })
+        .object({
+          filter: z.enum(['upcoming', 'past', 'all']).default('all'),
+          mine: z.enum(['true', 'false', '1', '0']).optional(),
+          q: z.string().max(200).optional(),
+        })
         .parse(request.query);
-      return s.trips.listTrips(actorOf(request), { filter: q.filter, mine: q.mine === 'true' || q.mine === '1' });
+      return s.trips.listTrips(actorOf(request), { filter: q.filter, mine: q.mine === 'true' || q.mine === '1', query: q.q });
     });
 
     api.get('/api/trips/find', async (request) => {
@@ -170,6 +174,13 @@ export async function apiRoutes(
       reply.code(201).send(s.trips.addSegment(actorOf(request), Id.parse(request.params).id, SegmentInput.parse(request.body), 'manual')),
     );
     api.patch('/api/segments/:id', async (request) => s.trips.updateSegment(actorOf(request), Id.parse(request.params).id, SegmentPatch.parse(request.body)));
+    api.post('/api/segments/:id/move', async (request) => {
+      const body = z
+        .object({ trip_id: z.string().optional(), new_trip_title: z.string().trim().max(200).optional() })
+        .refine((b) => !!b.trip_id !== !!b.new_trip_title, 'Entweder trip_id oder new_trip_title angeben')
+        .parse(request.body);
+      return s.trips.moveSegment(actorOf(request), Id.parse(request.params).id, { tripId: body.trip_id, newTripTitle: body.new_trip_title });
+    });
     api.delete('/api/segments/:id', async (request) => {
       s.trips.deleteSegment(actorOf(request), Id.parse(request.params).id);
       return { ok: true };

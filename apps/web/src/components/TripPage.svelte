@@ -7,6 +7,7 @@
   import type { Segment, Trip } from '../lib/types';
   import Avatars from './Avatars.svelte';
   import ImportDialog from './ImportDialog.svelte';
+  import MoveDialog from './MoveDialog.svelte';
   import SegmentForm from './SegmentForm.svelte';
   import TripForm from './TripForm.svelte';
 
@@ -18,6 +19,7 @@
   let editing = $state(false);
   let segmentForm = $state<{ segment: Segment | null } | null>(null);
   let importing = $state(false);
+  let moving = $state<Segment | null>(null);
   let uploading = $state(false);
 
   async function refresh() {
@@ -164,7 +166,12 @@
         {#if s.airtrail.error}<div class="small warn">Nicht an AirTrail übertragen: {s.airtrail.error}</div>{/if}
         <div class="row spread small muted">
           <span>Quelle: {{ manual: 'von Hand', mail: 'Mail-Import', mcp: 'KI-Assistent', import: 'Import' }[s.source]}</span>
-          {#if trip!.can_edit}<button class="chip" onclick={() => (segmentForm = { segment: s })}>Bearbeiten</button>{/if}
+          {#if trip!.can_edit}
+            <span class="row">
+              <button class="chip" onclick={() => (moving = s)}>Verschieben</button>
+              <button class="chip" onclick={() => (segmentForm = { segment: s })}>Bearbeiten</button>
+            </span>
+          {/if}
         </div>
       </div>
     {/snippet}
@@ -231,6 +238,18 @@
 {/if}
 {#if segmentForm && trip}
   <SegmentForm tripId={trip.id} segment={segmentForm.segment} onclose={() => (segmentForm = null)} onsaved={() => { segmentForm = null; void refresh(); }} />
+{/if}
+{#if moving && trip}
+  <MoveDialog
+    segment={moving}
+    fromTrip={trip}
+    onclose={() => (moving = null)}
+    onmoved={(target) => {
+      moving = null;
+      toast(`Verschoben nach „${target.title}“`);
+      void refresh();
+    }}
+  />
 {/if}
 {#if importing && trip}
   <ImportDialog tripId={trip.id} onclose={() => (importing = false)} ondone={refresh} />
