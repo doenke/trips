@@ -199,6 +199,11 @@ describe('mail import', () => {
     expect(broken.sent.at(-1)!.text).toContain('API überlastet');
     const log = broken.services.mail.recent();
     expect(log[0]).toMatchObject({ status: 'error', detail: 'API überlastet' });
+    // The same mail again (moved back into the folder) is retried, not skipped as duplicate.
+    const again = rawMail({ from: 'joerg@example.org', subject: 'Retry', text: 'x', messageId: 'retry-1@example.org' });
+    expect(await broken.services.mail.process(again)).toBe('error');
+    expect(await broken.services.mail.process(again)).toBe('error');
+    expect(broken.services.mail.recent().filter((r) => r.message_id === '<retry-1@example.org>' || r.message_id === 'retry-1@example.org')).toHaveLength(1);
     await broken.close();
   });
 

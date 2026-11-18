@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { SEGMENT_TYPES } from '../service/schemas.js';
 import { isValidLocal, isValidZone } from '../time.js';
 
-/** What the model returns for one mail / pasted text / PDF. Every field is required (null when unknown). */
+/** A booking as Trips works with it: null where the document says nothing. */
 export const ExtractionSchema = z.object({
   is_booking: z.boolean(),
   trip_title: z.string().nullable(),
@@ -33,6 +33,42 @@ export const ExtractionSchema = z.object({
   ),
 });
 export type Extraction = z.infer<typeof ExtractionSchema>;
+
+/**
+ * What the model fills in. Structured outputs allow at most 16 nullable (union-typed) fields, and a
+ * booking has more – so every value is a plain string here, "" meaning unknown, mapped back to null
+ * by fromWire(). Never make fields of this schema nullable or optional.
+ */
+const wireSegment = z.object(
+  Object.fromEntries(
+    Object.entries(ExtractionSchema.shape.segments.element.shape).map(([k, v]) => [k, k === 'type' || k === 'cancelled' ? v : z.string()]),
+  ) as { [K in keyof ExtractedSegmentShape]: K extends 'type' | 'cancelled' ? ExtractedSegmentShape[K] : z.ZodString },
+);
+type ExtractedSegmentShape = typeof ExtractionSchema.shape.segments.element.shape;
+export const WireSchema = z.object({
+  is_booking: z.boolean(),
+  trip_title: z.string(),
+  destination: z.string(),
+  passengers: z.array(z.string()),
+  segments: z.array(wireSegment),
+});
+type Wire = z.infer<typeof WireSchema>;
+
+const orNull = (v: string) => (v.trim() ? v.trim() : null);
+
+export function fromWire(w: Wire): Extraction {
+  return {
+    is_booking: w.is_booking,
+    trip_title: orNull(w.trip_title),
+    destination: orNull(w.destination),
+    passengers: w.passengers,
+    segments: w.segments.map((s) => {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(s)) out[k] = typeof v === 'string' && k !== 'type' ? orNull(v) : v;
+      return out as ExtractedSegment;
+    }),
+  };
+}
 export type ExtractedSegment = Extraction['segments'][number];
 
 export interface ExtractInput {
@@ -48,7 +84,7 @@ export type Extractor = (input: ExtractInput) => Promise<Extraction>;
 export const SYSTEM_PROMPT = `You extract travel bookings from emails, pasted text and PDF documents for a personal trip planner.
 
 Rules:
-- Never invent anything. Use null for every value the document does not state.
+- Never invent anything. Use an empty string "" for every value the document does not state.
 - is_booking = false for newsletters, advertising, price alerts, surveys, check-in reminders without booking data and anything else that is not a booking, booking change or cancellation. Then return no segments.
 - One segment per flight leg (a connection DUS–FRA–JFK is two segments). Trains likewise per train when train numbers are given.
 - Hotels: one segment from check-in (start) to check-out (end); title = hotel name, address = hotel address, seat = room if stated.
@@ -101,15 +137,15 @@ export function claudeExtractor(opts: { apiKey: string; model: string }): Extrac
       max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content }],
-      output_config: { format: betaZodOutputFormat(ExtractionSchema) },
+      output_config: { format: betaZodOutputFormat(WireSchema) },
       // On a policy decline the API retries on a fallback model instead of returning nothing.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
     });
     if (response.stop_reason === 'refusal') throw new Error('Claude hat die Auswertung abgelehnt.');
     if (response.stop_reason === 'max_tokens') throw new Error('Die Antwort von Claude war zu lang und wurde abgeschnitten.');
-    const parsed = ExtractionSchema.safeParse(response.parsed_output);
+    const parsed = WireSchema.safeParse(response.parsed_output);
     if (!parsed.success) throw new Error('Claude hat kein gültiges Ergebnis geliefert.');
-    return cleanExtraction(parsed.data);
+    return cleanExtraction(fromWire(parsed.data));
   };
 }

@@ -104,9 +104,11 @@ export class MailProcessor {
     try {
       this.db.run('INSERT INTO mail_log (message_id, sender, subject, status) VALUES (?, ?, ?, ?)', messageId, sender, subject, 'processing');
     } catch {
-      // Already known. Only a run that died mid-way (still "processing" after 15 minutes) is retried.
+      // Already known. Retried are mails that failed (e.g. Claude was unreachable – move them back into
+      // the import folder) and runs that died mid-way (still "processing" after 15 minutes).
       const reclaimed = this.db.run(
-        `UPDATE mail_log SET created_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE message_id = ? AND status = 'processing' AND created_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-15 minutes')`,
+        `UPDATE mail_log SET status = 'processing', detail = NULL, created_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+         WHERE message_id = ? AND (status = 'error' OR (status = 'processing' AND created_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-15 minutes')))`,
         messageId,
       );
       if (!reclaimed.changes) return 'duplicate';
