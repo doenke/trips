@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { accessSync, constants, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { MIGRATIONS } from './migrations.js';
@@ -14,7 +14,19 @@ export class Db {
   private depth = 0;
 
   constructor(file: string) {
-    if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
+    if (file !== ':memory:') {
+      const dir = dirname(file);
+      try {
+        mkdirSync(dir, { recursive: true });
+        accessSync(dir, constants.W_OK);
+      } catch {
+        const uid = process.getuid?.() ?? '?';
+        throw new Error(
+          `Datenverzeichnis ${dir} ist nicht beschreibbar (Prozess läuft als UID ${uid}). ` +
+            `Auf dem Host z. B.: sudo chown -R ${uid}:${uid} <Pfad des Volumes>`,
+        );
+      }
+    }
     this.raw = new DatabaseSync(file);
     this.raw.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
     this.migrate();

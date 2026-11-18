@@ -3,6 +3,14 @@
   "app": {
     "major": 1,
     "since": "2026-11-17",
-    "paths": ["apps", "scripts", "Dockerfile", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"]
+    "paths": [
+      "apps",
+      "scripts",
+      "Dockerfile",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "docker-entrypoint.sh"
+    ]
   }
 }

@@ -25,7 +25,8 @@ COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /app/apps/server/dist ./dist
 COPY --from=build /app/apps/web/dist ./web
 # Fails the build if the image library has no binary for this platform (musl, amd64/arm64).
-RUN node -e "require('sharp')" && mkdir -p /data && chown node:node /data
+RUN node -e "require('sharp')" && apk add --no-cache su-exec && mkdir -p /data && chown node:node /data
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ARG APP_VERSION=dev
 LABEL org.opencontainers.image.version=$APP_VERSION \
       org.opencontainers.image.source="https://github.com/doenke/trips" \
@@ -37,8 +38,9 @@ ENV APP_VERSION=$APP_VERSION \
     DATA_DIR=/data \
     WEB_DIST=/app/web \
     TZ=Europe/Berlin
-USER node
+# The entrypoint fixes ownership of a bind-mounted /data, then drops to the user "node" – the app never runs as root.
 VOLUME /data
 EXPOSE 41873
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD wget -qO- "http://127.0.0.1:${PORT}/healthz" >/dev/null || exit 1
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]

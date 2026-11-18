@@ -18,8 +18,8 @@ services:
     ports:
       - "41873:41873"     # Ziel für den Reverse Proxy: http://<host>:41873
     volumes:
-      # Datenbank, Anhänge und Profilbilder. Der Container läuft als UID 1000:
-      # sudo mkdir -p /data/container/trips/data && sudo chown 1000:1000 /data/container/trips/data
+      # Datenbank, Anhänge und Profilbilder. Die Rechte setzt der Container beim Start selbst
+      # (App läuft als UID 1000) – also kein "user:" hier eintragen.
       - /data/container/trips/data:/data
     healthcheck:
       # /healthz antwortet nur mit 200, wenn Datenbank und Datenverzeichnis passen.

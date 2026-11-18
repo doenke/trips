@@ -54,7 +54,6 @@ Trips passt zu dir, wenn du ...
 ```bash
 cp .env.example .env
 cp compose.example.yml compose.yml
-sudo mkdir -p /data/container/trips/data && sudo chown 1000:1000 /data/container/trips/data
 ```
 
 In `.env` mindestens `PUBLIC_URL`, `SESSION_KEY` (`openssl rand -base64 32`), `OIDC_ISSUER` und
@@ -68,7 +67,8 @@ docker compose ps        # zeigt nach ein paar Sekunden "healthy"
 
 Trips lauscht auf Port `41873` (innen wie außen). Das Image `ghcr.io/doenke/trips:latest` baut
 die CI bei jedem Push auf `main`, für amd64 und arm64. Die Datenbank legt Trips beim ersten Start
-selbst an.
+selbst an. Die Rechte am Datenverzeichnis setzt der Container beim Start selbst; die App läuft
+danach als Benutzer `node` (UID 1000), nicht als root.
 
 ## Ein erster Rundgang
 
@@ -223,6 +223,9 @@ Trips, damit keine Mail-Schleifen entstehen.
 
 ### Wichtige Hinweise für den Betrieb
 
+- **„unable to open database file“ / „Datenverzeichnis … nicht beschreibbar“:** Das Volume gehört
+  dem falschen Benutzer. Normalerweise repariert der Container das selbst; hast du im Compose
+  `user:` gesetzt, hilft `sudo chown -R 1000:1000 /data/container/trips/data`.
 - **Backup:** Alles liegt unter `/data/container/trips/data` – die Datenbank `trips.db`
   (SQLite im WAL-Modus, also `trips.db-wal` mitsichern), Anhänge unter `files/` und Profilbilder
   unter `avatars/`. Zusätzlich gibt es unter Einstellungen einen JSON-Export.
