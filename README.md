@@ -104,9 +104,10 @@ Fällt eine Buchung zeitlich in eine bestehende Reise (mit fünf Tagen Spielraum
 gestrichelte Fläche zeigt „Buchung hier ablegen“; loslassen, und nach ein paar Sekunden steht die
 Zusammenfassung da. Das klappt mit dem klassischen Outlook unter Windows in Edge und Chrome (die
 Mail kommt als `.msg`), mit Outlook für Mac, Apple Mail und Thunderbird (als `.eml`) und mit PDFs.
-Weitergeleitete Mails im Anhang und deren PDFs liest Trips mit. Ehrlich gesagt: Aus dem neuen
-Outlook für Windows und aus Outlook im Web lässt sich eine Mail meist nicht als Datei
-herausziehen – dort die Mail weiterleiten oder erst als Datei speichern.
+Weitergeleitete Mails im Anhang und deren PDFs liest Trips mit. Das **neue Outlook für Windows**
+und Outlook im Web geben beim Ziehen keine Datei heraus; bringt der Drop den Mailtext mit, wertet
+Trips den aus. Kommt nur der Betreff an, zeigt Trips, was das Mailprogramm übergeben hat – dann die
+Mail lieber an die Import-Adresse weiterleiten.
 
 ### 3. Die Reise ansehen
 

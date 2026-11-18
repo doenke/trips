@@ -16,10 +16,25 @@
   let error = $state('');
   let depth = 0;
 
-  const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
   const target = $derived(app.dropTrip?.canEdit ? app.dropTrip : null);
+  /** What the source offered, shown when a drop brought nothing usable (helps with new mail apps). */
+  let received = $state<string[]>([]);
 
-  async function upload(files: File[]) {
+  /** Drags that start inside the page (text, links) and drops into form fields are left alone. */
+  let internal = false;
+  const editable = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest('input, textarea, [contenteditable="true"]');
+  const ours = (e: DragEvent) => !internal && !!e.dataTransfer && !editable(e.target);
+
+  /** Accept with an effect the source allows – Outlook may only offer "move", and "copy" would be refused. */
+  function accept(e: DragEvent) {
+    e.preventDefault();
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const allowed = dt.effectAllowed;
+    dt.dropEffect = /copy|all|uninitialized/i.test(allowed) ? 'copy' : /move/i.test(allowed) ? 'move' : /link/i.test(allowed) ? 'link' : 'copy';
+  }
+
+  async function send(form: FormData) {
     if (!app.me?.extraction) {
       error = 'Die automatische Auswertung ist auf diesem Server nicht eingerichtet (ANTHROPIC_API_KEY).';
       return;
@@ -27,8 +42,7 @@
     busy = true;
     error = '';
     result = null;
-    const form = new FormData();
-    for (const f of files) form.append('file', f, f.name);
+    received = [];
     try {
       result = await api<ImportResult>(target ? `/api/trips/${target.id}/import` : '/api/import', { method: 'POST', body: form });
       app.importTick++;
@@ -39,37 +53,71 @@
     }
   }
 
+  function htmlText(html: string): string {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script, style').forEach((n) => n.remove());
+    return (doc.body?.innerText || doc.body?.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  /** Files win; otherwise the text the mail app hands over (the new Outlook gives no file). */
+  async function handleDrop(dt: DataTransfer) {
+    const files = [...dt.files];
+    if (files.length) {
+      const form = new FormData();
+      for (const f of files) form.append('file', f, f.name);
+      return send(form);
+    }
+    const types = [...dt.types];
+    const html = types.includes('text/html') ? dt.getData('text/html') : '';
+    const plain = types.includes('text/plain') ? dt.getData('text/plain') : '';
+    const text = [plain.trim(), html ? htmlText(html) : ''].sort((a, b) => b.length - a.length)[0] ?? '';
+    // A booking needs more than a subject line.
+    if (text.length >= 200 || (text.includes('\n') && text.length >= 60)) {
+      const form = new FormData();
+      form.set('text', text);
+      return send(form);
+    }
+    received = types.map((t) => {
+      const v = t === 'Files' ? '' : dt.getData(t);
+      return v ? `${t}: ${v.replace(/\s+/g, ' ').slice(0, 120)}${v.length > 120 ? ' …' : ''}` : t;
+    });
+    error = 'Dein Mailprogramm hat keine Mail-Datei und keinen Mailtext übergeben, nur das hier:';
+  }
+
   onMount(() => {
+    const start = () => (internal = true);
+    const end = () => (internal = false);
     const enter = (e: DragEvent) => {
-      if (!hasFiles(e)) return;
-      e.preventDefault();
+      if (!ours(e)) return;
+      accept(e);
       depth++;
       dragging = true;
     };
+    // Without preventDefault here the browser refuses the drop (red cursor) or opens the file itself.
     const over = (e: DragEvent) => {
-      if (!hasFiles(e)) return;
-      // Without this the browser would open the file instead of handing it to the app.
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      if (ours(e)) accept(e);
     };
     const leave = (e: DragEvent) => {
-      if (!hasFiles(e)) return;
+      if (!ours(e)) return;
       depth = Math.max(0, depth - 1);
       if (!depth) dragging = false;
     };
     const drop = (e: DragEvent) => {
-      if (!hasFiles(e)) return;
+      if (!ours(e)) return;
       e.preventDefault();
       depth = 0;
       dragging = false;
-      const files = [...(e.dataTransfer?.files ?? [])];
-      if (files.length) void upload(files);
+      void handleDrop(e.dataTransfer!);
     };
+    window.addEventListener('dragstart', start);
+    window.addEventListener('dragend', end);
     window.addEventListener('dragenter', enter);
     window.addEventListener('dragover', over);
     window.addEventListener('dragleave', leave);
     window.addEventListener('drop', drop);
     return () => {
+      window.removeEventListener('dragstart', start);
+      window.removeEventListener('dragend', end);
       window.removeEventListener('dragenter', enter);
       window.removeEventListener('dragover', over);
       window.removeEventListener('dragleave', leave);
@@ -80,6 +128,7 @@
   function close() {
     result = null;
     error = '';
+    received = [];
   }
 
   function openTrip() {
@@ -108,6 +157,15 @@
       <p class="notice">Claude liest die Buchung … das dauert ein paar Sekunden.</p>
     {:else if error}
       <p class="error">{error}</p>
+      {#if received.length}
+        <ul class="received small">
+          {#each received as r, i (i)}<li><code>{r}</code></li>{/each}
+        </ul>
+        <p class="small">
+          Was immer geht: die Mail an die Import-Adresse weiterleiten. Bietet dein Outlook <strong>Speichern unter</strong> (als .eml) an, kannst
+          du auch die gespeicherte Datei hier hereinziehen.
+        </p>
+      {/if}
     {:else if result}
       <pre class="summary">{result.summary}</pre>
     {/if}
@@ -153,6 +211,11 @@
   }
   .target strong {
     font-size: 1.2rem;
+  }
+  .received {
+    margin: 8px 0;
+    padding-left: 18px;
+    word-break: break-all;
   }
   .summary {
     white-space: pre-wrap;
