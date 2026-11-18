@@ -29,7 +29,8 @@ pnpm-Monorepo: `apps/server` (Fastify 5, node:sqlite, TypeScript 7), `apps/web` 
   - `trips.ts` – Reisen, Segmente, Rechte (`canEdit`: Reisende oder Admin; lesen dürfen alle), Datumserweiterung, Hooks,
     Suche (`listTrips({ query })`, alle Wörter, Umlaute egal), `moveSegment` (Ziel oder neue Reise, Anhänge mit, alte Reise schrumpft).
   - `booking.ts` – Extraktion → Zuordnung → Duplikate/Stornos → Mitreisende → Anhänge → Zusammenfassung.
-  - `matching.ts` – `pickTrip` (±`TRIP_MATCH_DAYS`, meiste gemeinsame Reisende, dann nächstgelegen), `sameSegment`.
+  - `matching.ts` – `pickTrip`/`fitsTrip` (±`TRIP_MATCH_DAYS`; hat die Reise eine Rückreise zum Startort (`returnDay`),
+    nur noch Beginn bis einschließlich Rückreisetag, ab Starttag − 1), meiste gemeinsame Reisende, dann nächstgelegen; `sameSegment`.
   - `names.ts` – toleranter Passagier-Abgleich. `users.ts` – Konten, Zusatz-Absenderadressen, ICS-Token, AirTrail-Key.
   - `schemas.ts` – zod-Schemas für REST *und* MCP (snake_case), deutsche zod-Meldungen.
   - `exchange.ts` – JSON-Export/-Import; `tripit.ts` – TripIt-Dump → Exportformat (UTC → Ortszeit über

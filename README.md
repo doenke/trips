@@ -104,7 +104,11 @@ Neu:
 Als Mitreisende eingetragen: Mia
 ```
 
-Fällt eine Buchung zeitlich in eine bestehende Reise (mit fünf Tagen Spielraum), landet sie dort.
+Fällt eine Buchung zeitlich in eine bestehende Reise, landet sie dort. Solange die Reise noch keine
+Rückfahrt hat, gibt es fünf Tage Spielraum. Steht die Rückreise schon drin – zurück zum Flughafen
+oder Bahnhof, von dem es losging –, ist die Reise komplett: Was spätestens am Rückreisetag beginnt
+(das Hotel am Flughafen in der letzten Nacht), gehört noch dazu, ebenso das Hotel oder der Parkplatz
+am Abend vor dem Abflug. Ein Flug am Tag danach ist eine neue Reise.
 
 **Noch schneller:** Zieh die Mail direkt aus deinem Mailprogramm ins Browserfenster mit Trips. Eine
 gestrichelte Fläche zeigt „Buchung hier ablegen“; loslassen, und nach ein paar Sekunden steht die
@@ -199,7 +203,7 @@ mitreist (oder alles, wenn du Admin bist). Die Werkzeuge: `list_trips`, `get_tri
 | `IMPORT_ADDRESS` | Die Weiterleitungsadresse, wie sie in der App angezeigt wird |
 | `SMTP_*` | Für die Zusammenfassungs-Mails (optional) |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Für die Auswertung der Buchungen, Standard `claude-sonnet-5-5` |
-| `TRIP_MATCH_DAYS` | Spielraum in Tagen für die Zuordnung zu einer Reise, Standard 5 |
+| `TRIP_MATCH_DAYS` | Spielraum in Tagen für die Zuordnung zu einer Reise ohne Rückreise, Standard 5 |
 | `AIRTRAIL_URL` | Dein AirTrail. Die Keys hinterlegt jeder selbst in der App |
 | `TRUSTED_PROXY` | `true` hinter Nginx Proxy Manager, damit `X-Forwarded-*` zählt |
 

@@ -245,7 +245,7 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
     'find_trip_for_date',
     {
       title: 'Passende Reise finden',
-      description: `Findet die Reise, zu der ein Zeitraum gehört – mit derselben Regel wie der Mail-Import: Überschneidung mit ±${s.config.TRIP_MATCH_DAYS} Tagen Karenz, bevorzugt die Reise mit den meisten gemeinsamen Reisenden, dann die nächstgelegene. Nur Reisen, die du ändern darfst.`,
+      description: `Findet die Reise, zu der ein Zeitraum gehört – mit derselben Regel wie der Mail-Import: Überschneidung mit ±${s.config.TRIP_MATCH_DAYS} Tagen Karenz; hat eine Reise schon ihre Rückreise zum Startort, zählt sie nur bis einschließlich Rückreisetag (und ab dem Tag vor dem Start). Bevorzugt die Reise mit den meisten gemeinsamen Reisenden, dann die nächstgelegene. Nur Reisen, die du ändern darfst.`,
       inputSchema: {
         start_date: z
           .string()

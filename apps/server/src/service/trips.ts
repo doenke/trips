@@ -3,7 +3,7 @@ import { airportZone } from '../airports.js';
 import type { Db } from '../db/index.js';
 import { localToUtc, todayIn } from '../time.js';
 import { type Actor, badRequest, forbidden, notFound } from './errors.js';
-import { pickTrip, type TripCandidate } from './matching.js';
+import { pickTrip, returnDay, type TripCandidate } from './matching.js';
 import { type SegmentInput, type SegmentPatch, type SegmentType, type Source, type TripInput, type TripPatch } from './schemas.js';
 import { type PublicUser, publicUser, type UserRow } from './users.js';
 
@@ -318,7 +318,11 @@ export class TripService {
       `SELECT DISTINCT t.* FROM trips t JOIN trip_travelers x ON x.trip_id = t.id WHERE x.user_id IN (${userIds.map(() => '?').join(',')})`,
       ...userIds,
     );
-    return rows.map((t) => ({ ...t, travelerIds: this.travelerIds(t.id) }));
+    return rows.map((t) => ({
+      ...t,
+      travelerIds: this.travelerIds(t.id),
+      returnDay: returnDay(this.db.all<SegmentRow>('SELECT * FROM segments WHERE trip_id = ?', t.id)),
+    }));
   }
 
   /** The trip a date range belongs to (same rule as the mail import), limited to trips the actor may edit. */
