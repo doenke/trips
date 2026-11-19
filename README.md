@@ -34,6 +34,9 @@ Zeitleiste, Kalendereintrag und AirTrail-Flug, und Claude kann sie lesen und pfl
   die passende Reise selbst – samt PDF-Anhängen.
 - **Falsch einsortiert? Verschieben** – Hat der Import eine Buchung der falschen Reise zugeordnet,
   schiebst du den Eintrag mit „Verschieben“ in eine andere oder eine neue Reise – samt Anhängen.
+- **Zwei Reisen, die eigentlich eine sind** – „Mit anderer Reise zusammenführen“ holt alle Einträge,
+  Anhänge und Reisenden in eine Reise. Praktisch nach dem TripIt-Umzug, wo Hin- und Rückflug
+  manchmal getrennte Reisen waren.
 - **Alles wiederfinden** – Das Suchfeld auf der Startseite durchsucht alle Reisen, auch die alten:
   Ort, Hotel, Flugnummer, Flughafencode oder Buchungsnummer.
 - **Buchung einfügen** – Text aus einer Mail, die Mail als Datei (.eml, .msg) oder ein PDF direkt
@@ -131,6 +134,10 @@ Dienstreise drei Tage vorher, weil beides in den fünf Tagen Spielraum liegt –
 und tippe **Verschieben**: in eine andere Reise oder in eine neue mit denselben Reisenden. Anhänge
 gehen mit (teilen sich mehrere Einträge ein PDF, bekommt die neue Reise eine Kopie), und die alte
 Reise schrumpft wieder auf ihre übrigen Einträge.
+
+Sind zwei Reisen eigentlich eine, tippe unten in der Reise auf **Mit anderer Reise
+zusammenführen** und wähl die Zielreise: Einträge, Anhänge und Reisende wandern hinüber, die Notizen
+werden angehängt, und die alte Reise verschwindet. Gleiche PDFs bleiben dabei nur einmal.
 
 Anhänge gehören zu den Einträgen, mit denen sie gekommen sind: Claude sagt beim Import, in welchem
 PDF welcher Eintrag steht; weiß es das nicht, hängt das PDF an allen Einträgen dieser Buchung. Eigene

@@ -552,6 +552,62 @@ export class TripService {
   }
 
   /**
+   * Merges a trip into another: segments, attachments and travelers move over, the target's dates
+   * grow, notes are appended, then the merged trip is gone. Returns attachment files to delete
+   * (duplicates of files the target already has).
+   */
+  mergeTrips(actor: Actor, sourceId: string, targetId: string): { trip: TripView; removedFiles: string[] } {
+    if (sourceId === targetId) throw badRequest('Eine Reise lässt sich nicht mit sich selbst zusammenführen.');
+    const source = this.requireEditable(actor, sourceId);
+    const target = this.requireEditable(actor, targetId);
+    const before = new Set(this.travelerIds(targetId));
+    const sourceTravelers = this.travelerIds(sourceId);
+    const segmentIds = this.db.all<{ id: string }>('SELECT id FROM segments WHERE trip_id = ?', sourceId).map((r) => r.id);
+    const removedFiles: string[] = [];
+    this.db.tx(() => {
+      this.db.run(`UPDATE segments SET trip_id = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE trip_id = ?`, targetId, sourceId);
+      // Attachments: the same file in both trips is kept once, with the links of both.
+      for (const a of this.db.all<AttachmentRow>('SELECT * FROM attachments WHERE trip_id = ?', sourceId)) {
+        const same = this.db.get<{ id: string }>('SELECT id FROM attachments WHERE trip_id = ? AND sha256 = ?', targetId, a.sha256);
+        if (same) {
+          this.db.run(
+            'INSERT OR IGNORE INTO attachment_segments (attachment_id, segment_id) SELECT ?, segment_id FROM attachment_segments WHERE attachment_id = ?',
+            same.id,
+            a.id,
+          );
+          this.db.run('DELETE FROM attachments WHERE id = ?', a.id);
+          removedFiles.push(a.id);
+        } else {
+          this.db.run('UPDATE attachments SET trip_id = ? WHERE id = ?', targetId, a.id);
+        }
+      }
+      for (const u of sourceTravelers) this.db.run('INSERT OR IGNORE INTO trip_travelers (trip_id, user_id) VALUES (?, ?)', targetId, u);
+      const notes = [target.notes, source.notes && `${source.title}: ${source.notes}`].filter(Boolean).join('\n\n') || null;
+      const start = [target.start_date, source.start_date].filter((d): d is string => !!d).sort()[0] ?? null;
+      const end =
+        [target.end_date, source.end_date]
+          .filter((d): d is string => !!d)
+          .sort()
+          .at(-1) ?? null;
+      this.db.run(
+        `UPDATE trips SET notes = ?, destination = ?, start_date = ?, end_date = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`,
+        notes,
+        target.destination ?? source.destination,
+        start,
+        end,
+        targetId,
+      );
+      this.extendDates(targetId);
+      this.db.run('DELETE FROM trips WHERE id = ?', sourceId);
+    });
+    // AirTrail: moved flights follow the travelers of the target; new travelers get the target's flights too.
+    const joined = this.travelerIds(targetId).some((u) => !before.has(u));
+    if (joined) this.hooks.travelersChanged(targetId);
+    else for (const id of segmentIds) this.hooks.segmentChanged(id);
+    return { trip: this.getTrip(actor, targetId), removedFiles };
+  }
+
+  /**
    * Attachments go along with a moved segment. One that other segments of the old trip still use
    * stays there and the new trip gets its own copy (attachments belong to one trip).
    */

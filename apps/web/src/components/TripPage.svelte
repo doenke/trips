@@ -7,6 +7,7 @@
   import type { Segment, Trip } from '../lib/types';
   import Avatars from './Avatars.svelte';
   import ImportDialog from './ImportDialog.svelte';
+  import MergeDialog from './MergeDialog.svelte';
   import MoveDialog from './MoveDialog.svelte';
   import SegmentForm from './SegmentForm.svelte';
   import TripForm from './TripForm.svelte';
@@ -20,6 +21,7 @@
   let segmentForm = $state<{ segment: Segment | null } | null>(null);
   let importing = $state(false);
   let moving = $state<Segment | null>(null);
+  let merging = $state(false);
   let uploading = $state(false);
 
   async function refresh() {
@@ -243,7 +245,10 @@
     {/if}
 
     {#if trip.can_edit}
-      <div class="foot"><button class="danger" onclick={removeTrip}>Reise löschen</button></div>
+      <div class="foot row wrap center">
+        <button onclick={() => (merging = true)}>Mit anderer Reise zusammenführen</button>
+        <button class="danger" onclick={removeTrip}>Reise löschen</button>
+      </div>
     {:else}
       <p class="small muted foot">Nur Reisende und Admins können diese Reise ändern.</p>
     {/if}
@@ -255,6 +260,17 @@
 {/if}
 {#if segmentForm && trip}
   <SegmentForm tripId={trip.id} segment={segmentForm.segment} onclose={() => (segmentForm = null)} onsaved={() => { segmentForm = null; void refresh(); }} />
+{/if}
+{#if merging && trip}
+  <MergeDialog
+    {trip}
+    onclose={() => (merging = false)}
+    onmerged={(target) => {
+      merging = false;
+      toast(`Zusammengeführt in „${target.title}“`);
+      navigate(`/trips/${target.id}`, true);
+    }}
+  />
 {/if}
 {#if moving && trip}
   <MoveDialog
@@ -468,6 +484,9 @@
   }
   .att:first-child {
     border-top: none;
+  }
+  .center {
+    justify-content: center;
   }
   .foot {
     margin-top: 32px;

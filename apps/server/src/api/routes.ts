@@ -170,6 +170,13 @@ export async function apiRoutes(
       return { ok: true };
     });
 
+    api.post('/api/trips/:id/merge', async (request) => {
+      const { into } = z.object({ into: z.string().min(1) }).parse(request.body);
+      const r = s.trips.mergeTrips(actorOf(request), Id.parse(request.params).id, into);
+      s.attachments.removeFiles(r.removedFiles);
+      return r.trip;
+    });
+
     api.post('/api/trips/:id/segments', async (request, reply) =>
       reply.code(201).send(s.trips.addSegment(actorOf(request), Id.parse(request.params).id, SegmentInput.parse(request.body), 'manual')),
     );

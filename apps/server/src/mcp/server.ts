@@ -227,6 +227,23 @@ export function createMcpServer(s: Services, actor: Actor, via: string): McpServ
   );
 
   server.registerTool(
+    'merge_trips',
+    {
+      title: 'Reisen zusammenführen',
+      description:
+        'Führt eine Reise (source_trip_id) in eine andere (target_trip_id) zusammen: Segmente, Anhänge und Reisende wandern in die Zielreise, deren Daten wachsen mit, Notizen werden angehängt. Die Quellreise wird danach gelöscht – vorher beim Benutzer nachfragen.',
+      inputSchema: { source_trip_id: z.string(), target_trip_id: z.string() },
+      annotations: destructive,
+    },
+    guard(({ source_trip_id, target_trip_id }: { source_trip_id: string; target_trip_id: string }) => {
+      const source = s.trips.getTrip(actor, source_trip_id);
+      const r = s.trips.mergeTrips(actor, source_trip_id, target_trip_id);
+      s.attachments.removeFiles(r.removedFiles);
+      return text(`„${source.title}“ ist jetzt Teil von „${r.trip.title}“ (${r.trip.segments.length} Einträge) [trip_id: ${r.trip.id}]`);
+    }),
+  );
+
+  server.registerTool(
     'delete_segment',
     {
       title: 'Segment löschen',

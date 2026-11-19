@@ -27,7 +27,8 @@ pnpm-Monorepo: `apps/server` (Fastify 5, node:sqlite, TypeScript 7), `apps/web` 
 - **Eine Service-Schicht** `apps/server/src/service/`: REST (`api/routes.ts`), MCP (`mcp/server.ts`) und
   Mail-Import (`mail/processor.ts`) rufen nur diese Funktionen auf. Nichts duplizieren.
   - `trips.ts` – Reisen, Segmente, Rechte (`canEdit`: Reisende oder Admin; lesen dürfen alle), Datumserweiterung, Hooks,
-    Suche (`listTrips({ query })`, alle Wörter, Umlaute egal), `moveSegment` (Ziel oder neue Reise, Anhänge mit, alte Reise schrumpft).
+    Suche (`listTrips({ query })`, alle Wörter, Umlaute egal), `moveSegment` (Ziel oder neue Reise, Anhänge mit, alte Reise schrumpft),
+    `mergeTrips` (alles in die Zielreise, doppelte Dateien einmal, Quelle wird gelöscht – Dateien danach mit `removeFiles` entfernen).
   - `booking.ts` – Extraktion → Zuordnung → Duplikate/Stornos → Mitreisende → Anhänge → Zusammenfassung.
   - `matching.ts` – `pickTrip`/`fitsTrip` (±`TRIP_MATCH_DAYS`; hat die Reise eine Rückreise zum Startort (`returnDay`),
     nur noch Beginn bis einschließlich Rückreisetag, ab Starttag − 1), meiste gemeinsame Reisende, dann nächstgelegen; `sameSegment`.
