@@ -173,7 +173,7 @@
     {:else}
       <p class="muted">Der Mail-Import ist nicht eingerichtet.</p>
     {/if}
-    <p class="small muted">Angenommen werden Mails von deiner Login-Adresse und diesen weiteren Adressen:</p>
+    <p class="small muted">Angenommen werden Mails von deiner Login-Adresse und diesen weiteren Adressen – oder an sie, z. B. per Regel umgeleitete Buchungen:</p>
     <ul class="plain">
       <li class="muted">{me.user.email ?? '–'} (Login)</li>
       {#each me.alt_emails as e (e)}

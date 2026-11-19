@@ -39,6 +39,12 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
+function allAddresses(...fields: (AddressObject | AddressObject[] | undefined)[]): string[] {
+  const out: string[] = [];
+  for (const f of fields) for (const o of Array.isArray(f) ? f : f ? [f] : []) for (const v of o.value) if (v.address) out.push(v.address.toLowerCase());
+  return [...new Set(out)];
+}
+
 function firstAddress(a: AddressObject | AddressObject[] | undefined): string | null {
   const list = Array.isArray(a) ? a : a ? [a] : [];
   for (const o of list) for (const v of o.value) if (v.address) return v.address.toLowerCase();
@@ -126,10 +132,27 @@ export class MailProcessor {
       this.log.warn({ sender }, 'Mail abgelehnt: DMARC fehlgeschlagen (Absender vermutlich gefälscht)');
       return finish('rejected', 'DMARC-Prüfung fehlgeschlagen – Absender vermutlich gefälscht');
     }
-    const owner = sender ? this.users.ownerOfEmail(sender) : undefined;
+    // Whose booking: the sender's account; otherwise the first recipient (To, Cc) with an account –
+    // e.g. a confirmation redirected by a mail rule, still "From: airline, To: you".
+    let owner = sender ? this.users.ownerOfEmail(sender) : undefined;
+    let replyTo = sender;
+    let via = '';
     if (!owner) {
-      this.log.info({ sender }, 'Mail von unbekanntem Absender ignoriert');
-      return finish('ignored', `Unbekannter Absender ${sender ?? '(ohne Adresse)'} – nur Adressen von Konten (Login- oder Zusatzadresse) werden verarbeitet.`);
+      for (const address of allAddresses(mail.to, mail.cc)) {
+        owner = this.users.ownerOfEmail(address);
+        if (owner) {
+          replyTo = address;
+          via = `Zugeordnet über den Empfänger ${address} (Absender ${sender ?? 'unbekannt'}).\n\n`;
+          break;
+        }
+      }
+    }
+    if (!owner) {
+      this.log.info({ sender }, 'Mail ohne bekannten Absender oder Empfänger ignoriert');
+      return finish(
+        'ignored',
+        `Weder Absender (${sender ?? 'ohne Adresse'}) noch Empfänger gehören zu einem Konto – nur Login- oder Zusatzadressen werden verarbeitet.`,
+      );
     }
     const actor = { userId: owner.id, isAdmin: !!owner.is_admin };
 
@@ -142,11 +165,11 @@ export class MailProcessor {
       this.log.warn({ err: message, sender }, 'Mail-Import fehlgeschlagen');
       await this.reply(
         mail,
-        sender!,
+        replyTo!,
         'Trips: Buchung konnte nicht übernommen werden',
         `Beim Übernehmen deiner Mail „${subject ?? ''}“ ist etwas schiefgegangen:\n\n${message}\n\nDu kannst die Buchung in der App auch mit „Buchung einfügen“ übernehmen.\n${this.opts.publicUrl}`,
       );
-      return finish('error', message, null, owner.id);
+      return finish('error', `${via}${message}`, null, owner.id);
     }
 
     const summary = summarize(result);
@@ -162,8 +185,9 @@ export class MailProcessor {
       result.status === 'no_booking'
         ? 'Trips: keine Buchung erkannt'
         : `Trips: ${result.trip?.title ?? 'Buchung'}${counts ? ` – ${counts}` : ' – nichts geändert'}`;
-    await this.reply(mail, sender!, mailSubject, `${summary}\n\n– Trips`);
-    return finish(status, summary, result.trip?.id ?? null, owner.id);
+    // The summary goes to the account's address – never to a foreign sender like the airline.
+    await this.reply(mail, replyTo!, mailSubject, `${summary}\n\n– Trips`);
+    return finish(status, `${via}${summary}`, result.trip?.id ?? null, owner.id);
   }
 
   private async reply(original: ParsedMail, to: string, subject: string, text: string): Promise<void> {

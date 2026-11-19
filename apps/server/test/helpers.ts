@@ -212,10 +212,13 @@ export function rawMail(p: {
   authResults?: string;
   pdf?: Buffer;
   autoSubmitted?: string;
+  to?: string;
+  cc?: string;
 }): string {
   const headers = [
     `From: ${p.from}`,
-    'To: trips@example.org',
+    `To: ${p.to ?? 'trips@example.org'}`,
+    ...(p.cc ? [`Cc: ${p.cc}`] : []),
     `Subject: ${p.subject}`,
     `Message-ID: <${p.messageId}>`,
     'Date: Tue, 17 Nov 2026 10:00:00 +0100',

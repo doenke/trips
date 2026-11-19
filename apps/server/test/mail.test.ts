@@ -106,6 +106,35 @@ describe('mail import', () => {
     expect(t.sent).toHaveLength(0);
   });
 
+  it('finds the owner among the recipients when the sender is unknown (e.g. a redirected confirmation)', async () => {
+    t.setExtraction(parkingBooking);
+    const before = t.sent.length;
+    const status = await t.services.mail.process(
+      mail('Holiday Parking <noreply@parking.example>', { to: 'Jörg Lindner <joerg@example.org>', cc: 'trips@example.org', authResults: 'dmarc=pass' }),
+    );
+    expect(status).toBe('imported');
+    // The summary goes to Jörg, not to the parking company.
+    expect(t.sent.slice(before).map((m) => m.to)).toEqual(['joerg@example.org']);
+    const log = t.services.mail.recent()[0]!;
+    expect(log).toMatchObject({ status: 'imported', sender: 'noreply@parking.example', user_id: joerg.id });
+    expect(log.detail).toContain('Zugeordnet über den Empfänger joerg@example.org');
+    // Clean up: this test only checks the assignment.
+    await t.app.inject({ method: 'DELETE', url: `/api/trips/${log.trip_id}`, headers: joerg.headers });
+  });
+
+  it('ignores mail where neither sender nor recipients have an account', async () => {
+    const before = t.extractions.length;
+    expect(await t.services.mail.process(mail('noreply@airline.example', { to: 'someone@else.example', cc: 'trips@example.org' }))).toBe('ignored');
+    expect(t.extractions.length).toBe(before);
+  });
+
+  it('prefers the sender over the recipients', async () => {
+    t.setExtraction({ is_booking: false, trip_title: null, destination: null, passengers: [], segments: [] });
+    await t.services.mail.process(mail('mia@example.org', { to: 'joerg@example.org', cc: 'trips@example.org' }));
+    expect(t.services.mail.recent()[0]).toMatchObject({ user_id: mia.id, status: 'no_booking' });
+    expect(t.sent.at(-1)!.to).toBe('mia@example.org');
+  });
+
   it('rejects mail that failed DMARC', async () => {
     expect(await t.services.mail.process(mail('joerg@example.org', { authResults: 'spf=fail; dkim=none; dmarc=fail header.from=example.org' }))).toBe(
       'rejected',

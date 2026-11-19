@@ -93,9 +93,11 @@ Pocket ID und werden bei jedem Login aufgefrischt.
 ### 2. Eine Buchung weiterleiten
 
 Die Bestätigung von Airline, Bahn, Hotel oder Parkplatz an das Import-Postfach weiterleiten (die
-Adresse steht in den Einstellungen). Trips nimmt nur Mails von deiner Login-Adresse an – wenn
-Buchungen auch an deine Arbeitsadresse gehen, trag sie unter **Einstellungen → Buchungen per Mail**
-als weitere Absenderadresse ein. Nach ein paar Sekunden kommt die Zusammenfassung zurück:
+Adresse steht in den Einstellungen). Trips nimmt Mails an, die **von** einer deiner Adressen kommen
+(Login-Adresse oder eine weitere, die du unter **Einstellungen → Buchungen per Mail** einträgst, z. B.
+deine Arbeitsadresse) – oder die **an** eine davon gingen. So klappt auch eine Mail-Regel, die
+Buchungsbestätigungen unverändert umleitet: Absender ist dann die Airline, Empfänger du. Die
+Zusammenfassung kommt immer an deine Adresse zurück, nie an die Airline:
 
 ```
 Neue Reise angelegt: Mallorca im Juli
@@ -316,7 +318,10 @@ Trips, damit keine Mail-Schleifen entstehen.
   mit nur `/api/flight/save` funktionieren nicht.
 - **Mail-Import:** Trips liest den Import-Ordner per IMAP IDLE fast sofort, dazu alle
   `IMAP_POLL_MINUTES` Minuten (siehe [Import-Postfach ohne eigenes Postfach](#import-postfach-ohne-eigenes-postfach)). Jede Mail wird über ihre Message-ID nur einmal verarbeitet.
-  Unbekannte Absender werden ignoriert; das Log sehen Admins in den Einstellungen.
+  Mails, bei denen weder Absender noch Empfänger zu einem Konto gehören, werden ignoriert; das Log
+  sehen Admins in den Einstellungen. Ehrlich gesagt: Weil auch Empfänger zählen, kann im Prinzip
+  jede Mail an dich und an die Import-Adresse eine Buchung auslösen. Claude übernimmt nur echte
+  Buchungen, aber gefälschter „Buchungs“-Spam könnte eine Reise anlegen – dann einfach löschen.
 - **`DEV_LOGIN=true`** erlaubt eine Anmeldung nur mit Namen – nur für die Entwicklung, **nie in
   Produktion**.
 - **Altdaten:** Admins können unter **Einstellungen → Admin → JSON-Import** einen Export von Trips
